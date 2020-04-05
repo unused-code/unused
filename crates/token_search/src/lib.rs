@@ -1,2 +1,5 @@
 mod token;
-pub mod token_search;
+mod token_search;
+
+pub use self::token::*;
+pub use self::token_search::*;

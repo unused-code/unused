@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use read_ctags::{ctag_item::CtagItem, read_files::TagsReader};
+use read_ctags::{CtagItem, TagsReader};
 
 #[derive(Clone)]
 pub struct Token {

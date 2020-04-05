@@ -85,7 +85,7 @@ impl TokenSearchResults {
             })
     }
 
-    pub fn read_file(filename: &str) -> Result<String, io::Error> {
+    fn read_file(filename: &str) -> Result<String, io::Error> {
         let contents = fs::read_to_string(filename)?;
 
         Ok(contents)

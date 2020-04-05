@@ -1,4 +1,4 @@
-use read_ctags::{ctag_item::CtagItem, read_files::TagsReader};
+use read_ctags::{CtagItem, TagsReader};
 use serde_json;
 
 fn main() {
