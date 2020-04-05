@@ -12,7 +12,7 @@ use nom::{
     sequence::{preceded, separated_pair, terminated, tuple},
     IResult,
 };
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ParsedField<'a> {
@@ -95,11 +95,11 @@ fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
 fn build_kind_and_fields<'a>(
     language: Option<Language>,
     parsed_fields: Vec<ParsedField<'a>>,
-) -> (TokenKind, BTreeMap<String, String>) {
+) -> (TokenKind, HashMap<String, String>) {
     let (kind, rest): (Vec<ParsedField>, Vec<ParsedField>) =
         parsed_fields.iter().partition(|&f| is_kind(f));
 
-    let mut hash = BTreeMap::new();
+    let mut hash = HashMap::new();
 
     for field in rest.iter() {
         match field {
@@ -132,7 +132,7 @@ fn parses_item_lines() {
                 name: String::from("withInfo"),
                 file_path: String::from("path/to/file.rb"),
                 language: Some(Language::Ruby),
-                tags: BTreeMap::new(),
+                tags: HashMap::new(),
                 kind: TokenKind::Undefined
             }
         ))
@@ -150,14 +150,14 @@ fn parses_multiple_lines() {
                     name: String::from("first"),
                     file_path: String::from("path/to/file.rb"),
                     language: Some(Language::Ruby),
-                    tags: BTreeMap::new(),
+                    tags: HashMap::new(),
                     kind: TokenKind::Undefined
                 },
                 CtagItem {
                     name: String::from("second"),
                     file_path: String::from("path/to/file.rb"),
                     language: Some(Language::Ruby),
-                    tags: BTreeMap::new(),
+                    tags: HashMap::new(),
                     kind: TokenKind::Class
                 }
             ]
