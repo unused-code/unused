@@ -6,6 +6,7 @@ use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 use std::fs;
 use std::io;
+use std::ops::Deref;
 
 pub struct TokenSearchConfig {
     pub filter_tokens: fn(&Token) -> bool,
@@ -24,6 +25,14 @@ impl Default for TokenSearchConfig {
 }
 
 pub struct TokenSearchResults(Vec<TokenSearchResult>);
+
+impl Deref for TokenSearchResults {
+    type Target = Vec<TokenSearchResult>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 impl TokenSearchResults {
     pub fn generate() -> Self {
