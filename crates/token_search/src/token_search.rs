@@ -36,8 +36,10 @@ impl Deref for TokenSearchResults {
 
 impl TokenSearchResults {
     pub fn generate() -> Self {
-        let config = TokenSearchConfig::default();
+        Self::generate_with_config(TokenSearchConfig::default())
+    }
 
+    pub fn generate_with_config(config: TokenSearchConfig) -> Self {
         let loaded_files = Self::load_all_files(&config.files);
 
         let final_results = config
