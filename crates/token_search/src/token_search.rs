@@ -17,7 +17,7 @@ pub struct TokenSearchConfig {
 impl Default for TokenSearchConfig {
     fn default() -> Self {
         TokenSearchConfig {
-            filter_tokens: |_| true,
+            filter_tokens: |t| !t.token.contains(" ") && t.token.len() > 1,
             tokens: Token::all(),
             files: CodebaseFiles::all().paths,
         }
