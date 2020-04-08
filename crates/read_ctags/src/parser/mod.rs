@@ -84,7 +84,7 @@ fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
         input,
         CtagItem {
             name: name.to_string(),
-            file_path: file_path.to_string(),
+            file_path: file_path.trim_start_matches("../").to_string(),
             language,
             tags,
             kind,
