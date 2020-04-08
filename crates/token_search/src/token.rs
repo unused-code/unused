@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use read_ctags::{CtagItem, TagsReader};
+use read_ctags::{CtagItem, Language, TagsReader};
 
 #[derive(Clone)]
 pub struct Token {
@@ -16,6 +16,24 @@ impl Token {
             },
             Err(_) => vec![],
         }
+    }
+
+    pub fn defined_paths(&self) -> Vec<String> {
+        let mut outcome: Vec<String> = self
+            .definitions
+            .iter()
+            .map(|v| v.file_path.to_string())
+            .collect();
+        outcome.dedup();
+        outcome
+    }
+
+    pub fn first_path(&self) -> String {
+        self.defined_paths().iter().nth(0).unwrap().to_string()
+    }
+
+    pub fn languages(&self) -> Vec<Language> {
+        self.definitions.iter().filter_map(|d| d.language).collect()
     }
 
     fn build_tokens_from_outcome(outcome: Vec<CtagItem>) -> Vec<Token> {

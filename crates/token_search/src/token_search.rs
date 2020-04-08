@@ -1,17 +1,53 @@
 use super::token::Token;
 use codebase_files::CodebaseFiles;
-use rayon::prelude::*;
+use indicatif::ParallelProgressIterator;
+use indicatif::{ProgressBar, ProgressStyle};
+use itertools::Itertools;
+use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use read_ctags::Language;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use std::collections::HashMap;
+use std::convert::TryInto;
 use std::fs;
 use std::io;
-use std::ops::Deref;
 
 pub struct TokenSearchConfig {
     pub filter_tokens: fn(&Token) -> bool,
     pub tokens: Vec<Token>,
     pub files: Vec<String>,
+    pub display_progress: bool,
+    pub language_restriction: LanguageRestriction,
+}
+
+pub enum LanguageRestriction {
+    NoRestriction,
+    Only(Vec<Language>),
+    Except(Vec<Language>),
+}
+
+impl std::fmt::Display for LanguageRestriction {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            LanguageRestriction::NoRestriction => write!(f, "all file types"),
+            LanguageRestriction::Only(languages) => write!(
+                f,
+                "{}",
+                format!(
+                    "only {}",
+                    languages.iter().map(|l| l.to_string()).join(", ")
+                )
+            ),
+            LanguageRestriction::Except(languages) => write!(
+                f,
+                "{}",
+                format!(
+                    "except {}",
+                    languages.iter().map(|l| l.to_string()).join(", ")
+                )
+            ),
+        }
+    }
 }
 
 impl Default for TokenSearchConfig {
@@ -20,32 +56,78 @@ impl Default for TokenSearchConfig {
             filter_tokens: |t| !t.token.contains(" ") && t.token.len() > 1,
             tokens: Token::all(),
             files: CodebaseFiles::all().paths,
+            display_progress: true,
+            language_restriction: LanguageRestriction::Except(vec![
+                Language::JSON,
+                Language::Markdown,
+            ]),
+        }
+    }
+}
+
+impl TokenSearchConfig {
+    pub fn progress_bar(prefix: &str, size: usize) -> ProgressBar {
+        let pb = ProgressBar::new(size.try_into().unwrap());
+        pb.set_message(prefix);
+        pb.set_style(
+            ProgressStyle::default_bar()
+                .template("{msg:12} [{bar:40.cyan/blue}] {pos:>7}/{len:7}({eta})")
+                .progress_chars("#>-"),
+        );
+        pb
+    }
+
+    fn toggleable_progress_bar(&self, size: usize) -> ProgressBar {
+        if self.display_progress {
+            Self::progress_bar(&"🤔 Working...", size)
+        } else {
+            ProgressBar::hidden()
+        }
+    }
+
+    pub fn filter_token(&self, token: &Token) -> bool {
+        (self.filter_tokens)(token)
+    }
+
+    pub fn filter_language(&self, token: &Token) -> bool {
+        match &self.language_restriction {
+            LanguageRestriction::NoRestriction => true,
+            LanguageRestriction::Only(languages) => match &(token.languages()[..]) {
+                [lang] => languages.contains(lang),
+                _ => false,
+            },
+            LanguageRestriction::Except(languages) => match &(token.languages()[..]) {
+                [lang] => !languages.contains(lang),
+                _ => true,
+            },
         }
     }
 }
 
 pub struct TokenSearchResults(Vec<TokenSearchResult>);
 
-impl Deref for TokenSearchResults {
-    type Target = Vec<TokenSearchResult>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
 impl TokenSearchResults {
     pub fn generate() -> Self {
-        Self::generate_with_config(TokenSearchConfig::default())
+        Self::generate_with_config(&TokenSearchConfig::default())
     }
 
-    pub fn generate_with_config(config: TokenSearchConfig) -> Self {
+    pub fn value(&self) -> Vec<TokenSearchResult> {
+        self.0.clone()
+    }
+
+    pub fn generate_with_config(config: &TokenSearchConfig) -> Self {
         let loaded_files = Self::load_all_files(&config.files);
 
-        let final_results = config
+        let filtered_results = config
             .tokens
             .par_iter()
-            .filter(|&t| (config.filter_tokens)(t))
+            .filter(|&t| config.filter_token(t))
+            .filter(|&t| config.filter_language(t));
+
+        let total_size = filtered_results.clone().count();
+
+        let final_results = filtered_results
+            .progress_with(config.toggleable_progress_bar(total_size))
             .fold(Vec::new, |mut acc: Vec<TokenSearchResult>, t| {
                 let occurrences = loaded_files.iter().fold(
                     HashMap::new(),
@@ -116,6 +198,7 @@ impl Serialize for TokenSearchResults {
     }
 }
 
+#[derive(Clone)]
 pub struct TokenSearchResult {
     pub token: Token,
     pub occurrences: HashMap<String, usize>,
