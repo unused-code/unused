@@ -19,6 +19,27 @@ pub enum Language {
     XML,
 }
 
+impl std::fmt::Display for Language {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Language::CSS => write!(f, "CSS"),
+            Language::Elixir => write!(f, "Elixir"),
+            Language::Elm => write!(f, "Elm"),
+            Language::HTML => write!(f, "HTML"),
+            Language::JSON => write!(f, "JSON"),
+            Language::JavaScript => write!(f, "JavaScript"),
+            Language::Markdown => write!(f, "Markdown"),
+            Language::Ruby => write!(f, "Ruby"),
+            Language::Rust => write!(f, "Rust"),
+            Language::SCSS => write!(f, "SCSS"),
+            Language::Sh => write!(f, "Shell"),
+            Language::SVG => write!(f, "SVG"),
+            Language::TypeScript => write!(f, "TypeScript"),
+            Language::XML => write!(f, "XML"),
+        }
+    }
+}
+
 impl Language {
     pub fn from_path(path: &str) -> Option<Language> {
         match Path::new(path).extension().and_then(|v| v.to_str()) {
