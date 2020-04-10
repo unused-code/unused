@@ -7,7 +7,7 @@ use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use read_ctags::Language;
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fs;
 use std::io;
@@ -202,4 +202,21 @@ impl Serialize for TokenSearchResults {
 pub struct TokenSearchResult {
     pub token: Token,
     pub occurrences: HashMap<String, usize>,
+}
+
+impl TokenSearchResult {
+    pub fn defined_paths(&self) -> HashSet<String> {
+        self.token.defined_paths()
+    }
+
+    pub fn occurred_paths(&self) -> HashSet<String> {
+        self.all_occurred_paths()
+            .difference(&self.defined_paths())
+            .cloned()
+            .collect()
+    }
+
+    pub fn all_occurred_paths(&self) -> HashSet<String> {
+        self.occurrences.keys().cloned().collect()
+    }
 }

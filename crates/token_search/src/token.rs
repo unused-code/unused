@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use read_ctags::{CtagItem, Language, TagsReader};
+use std::collections::HashSet;
 
 #[derive(Clone)]
 pub struct Token {
@@ -18,14 +19,11 @@ impl Token {
         }
     }
 
-    pub fn defined_paths(&self) -> Vec<String> {
-        let mut outcome: Vec<String> = self
-            .definitions
+    pub fn defined_paths(&self) -> HashSet<String> {
+        self.definitions
             .iter()
             .map(|v| v.file_path.to_string())
-            .collect();
-        outcome.dedup();
-        outcome
+            .collect()
     }
 
     pub fn first_path(&self) -> String {
