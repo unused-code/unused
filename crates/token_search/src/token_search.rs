@@ -11,6 +11,7 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fs;
 use std::io;
+use std::iter::FromIterator;
 
 pub struct TokenSearchConfig {
     pub filter_tokens: fn(&Token) -> bool,
@@ -22,8 +23,8 @@ pub struct TokenSearchConfig {
 
 pub enum LanguageRestriction {
     NoRestriction,
-    Only(Vec<Language>),
-    Except(Vec<Language>),
+    Only(HashSet<Language>),
+    Except(HashSet<Language>),
 }
 
 impl std::fmt::Display for LanguageRestriction {
@@ -57,10 +58,9 @@ impl Default for TokenSearchConfig {
             tokens: Token::all(),
             files: CodebaseFiles::all().paths,
             display_progress: true,
-            language_restriction: LanguageRestriction::Except(vec![
-                Language::JSON,
-                Language::Markdown,
-            ]),
+            language_restriction: LanguageRestriction::Except(HashSet::from_iter(
+                vec![Language::JSON, Language::Markdown].iter().cloned(),
+            )),
         }
     }
 }
