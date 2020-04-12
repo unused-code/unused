@@ -66,7 +66,7 @@ impl Default for TokenSearchConfig {
 }
 
 impl TokenSearchConfig {
-    pub fn progress_bar(prefix: &str, size: usize) -> ProgressBar {
+    fn progress_bar(prefix: &str, size: usize) -> ProgressBar {
         let pb = ProgressBar::new(size.try_into().unwrap());
         pb.set_message(prefix);
         pb.set_style(
@@ -77,9 +77,9 @@ impl TokenSearchConfig {
         pb
     }
 
-    fn toggleable_progress_bar(&self, size: usize) -> ProgressBar {
+    pub fn toggleable_progress_bar(&self, prefix: &str, size: usize) -> ProgressBar {
         if self.display_progress {
-            Self::progress_bar(&"🤔 Working...", size)
+            Self::progress_bar(prefix, size)
         } else {
             ProgressBar::hidden()
         }
@@ -127,7 +127,7 @@ impl TokenSearchResults {
         let total_size = filtered_results.clone().count();
 
         let final_results = filtered_results
-            .progress_with(config.toggleable_progress_bar(total_size))
+            .progress_with(config.toggleable_progress_bar(&"🤔 Working...", total_size))
             .fold(Vec::new, |mut acc: Vec<TokenSearchResult>, t| {
                 let occurrences = loaded_files.iter().fold(
                     HashMap::new(),
