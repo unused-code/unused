@@ -1,8 +1,9 @@
 use itertools::Itertools;
 use read_ctags::{CtagItem, Language, TagsReader};
+use serde::Serialize;
 use std::collections::HashSet;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct Token {
     pub token: String,
     pub definitions: Vec<CtagItem>,

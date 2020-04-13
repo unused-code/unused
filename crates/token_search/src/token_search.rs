@@ -198,7 +198,7 @@ impl Serialize for TokenSearchResults {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize)]
 pub struct TokenSearchResult {
     pub token: Token,
     pub occurrences: HashMap<String, usize>,

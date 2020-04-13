@@ -11,6 +11,15 @@ serde_json = "1.0.50"
 read_ctags = { path = "crates/read_ctags/" }
 token_search = { path = "crates/token_search/" }
 codebase_files = { path = "crates/codebase_files/" }
+token_analysis = { path = "crates/token_analysis/" }
+project_configuration = { path = "crates/project_configuration/" }
+# serde = { version = "1.0.105", features = ["derive"] }
+colored = "1.9.3"
+itertools = "0.9"
+# indicatif = {version = "0.14"}
+# yaml-rust = "0.4"
+dirs = "2.0"
+structopt = "0.3"
 
 [[bin]]
 name = "read-ctags-rs"
@@ -23,6 +32,10 @@ path = "src/bin/token_search.rs"
 [[bin]]
 name = "tracked-files-rs"
 path = "src/bin/codebase_files.rs"
+
+[[bin]]
+name = "unused-rs"
+path = "src/bin/unused.rs"
 
 [workspace]
 members = ["crates/*"]
