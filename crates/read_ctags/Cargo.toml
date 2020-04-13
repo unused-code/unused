@@ -10,3 +10,6 @@ license = "MIT"
 [dependencies]
 nom = "5"
 serde = { version = "1.0.105", features = ["derive"] }
+
+[dev-dependencies]
+totems = "0.2.7"

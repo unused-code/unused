@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::path::Path;
+use std::str::FromStr;
 
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize)]
 pub enum Language {
@@ -42,33 +43,68 @@ impl std::fmt::Display for Language {
 
 impl Language {
     pub fn from_path(path: &str) -> Option<Language> {
-        match Path::new(path).extension().and_then(|v| v.to_str()) {
-            Some("css") => Some(Language::CSS),
-            Some("ex") => Some(Language::Elixir),
-            Some("exs") => Some(Language::Elixir),
-            Some("elm") => Some(Language::Elm),
-            Some("html") => Some(Language::HTML),
-            Some("json") => Some(Language::JSON),
-            Some("js") => Some(Language::JavaScript),
-            Some("jsx") => Some(Language::JavaScript),
-            Some("md") => Some(Language::Markdown),
-            Some("rb") => Some(Language::Ruby),
-            Some("rs") => Some(Language::Rust),
-            Some("scss") => Some(Language::SCSS),
-            Some("svg") => Some(Language::SVG),
-            Some("ts") => Some(Language::TypeScript),
-            Some("tsx") => Some(Language::TypeScript),
-            Some("xml") => Some(Language::XML),
+        match Path::new(path).extension() {
+            Some(v) => v.to_str().and_then(|x| Language::from_str(x).ok()),
             None => Some(Language::Sh),
-            _ => None,
+        }
+    }
+
+    pub fn extensions() -> Vec<&'static str> {
+        vec![
+            "css", "ex", "exs", "elm", "html", "json", "js", "jsx", "md", "rb", "rs", "scss", "sh",
+            "svg", "ts", "tsx", "xml",
+        ]
+    }
+}
+
+impl FromStr for Language {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_ref() {
+            "css" => Ok(Language::CSS),
+            "ex" => Ok(Language::Elixir),
+            "exs" => Ok(Language::Elixir),
+            "elm" => Ok(Language::Elm),
+            "html" => Ok(Language::HTML),
+            "json" => Ok(Language::JSON),
+            "js" => Ok(Language::JavaScript),
+            "jsx" => Ok(Language::JavaScript),
+            "md" => Ok(Language::Markdown),
+            "rb" => Ok(Language::Ruby),
+            "rs" => Ok(Language::Rust),
+            "scss" => Ok(Language::SCSS),
+            "sh" => Ok(Language::Sh),
+            "svg" => Ok(Language::SVG),
+            "ts" => Ok(Language::TypeScript),
+            "tsx" => Ok(Language::TypeScript),
+            "xml" => Ok(Language::XML),
+            "" => Ok(Language::Sh),
+            ext => Err(String::from(format!(
+                "Unable to parse file extension: {}",
+                ext
+            ))),
         }
     }
 }
 
-#[test]
-fn calculates_common_files() {
-    assert_eq!(Language::from_path("../foo/bar.rb"), Some(Language::Ruby));
-    assert_eq!(Language::from_path("/tmp/foo.md"), Some(Language::Markdown));
-    assert_eq!(Language::from_path("bin/rails"), Some(Language::Sh));
-    assert_eq!(Language::from_path("file.unknown"), None);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use totems::assert_ok;
+
+    #[test]
+    fn calculates_common_files() {
+        assert_eq!(Language::from_path("../foo/bar.rb"), Some(Language::Ruby));
+        assert_eq!(Language::from_path("/tmp/foo.md"), Some(Language::Markdown));
+        assert_eq!(Language::from_path("bin/rails"), Some(Language::Sh));
+        assert_eq!(Language::from_path("file.unknown"), None);
+    }
+
+    #[test]
+    fn all_extensions_are_supported() {
+        for ext in Language::extensions().iter() {
+            assert_ok!(Language::from_str(ext));
+        }
+    }
 }
