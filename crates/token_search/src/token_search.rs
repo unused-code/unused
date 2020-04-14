@@ -4,7 +4,7 @@ use indicatif::ParallelProgressIterator;
 use indicatif::{ProgressBar, ProgressStyle};
 use itertools::Itertools;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use read_ctags::Language;
+use read_ctags::{Language, TokenKind};
 use serde::ser::SerializeMap;
 use serde::{Serialize, Serializer};
 use std::collections::{HashMap, HashSet};
@@ -54,7 +54,11 @@ impl std::fmt::Display for LanguageRestriction {
 impl Default for TokenSearchConfig {
     fn default() -> Self {
         TokenSearchConfig {
-            filter_tokens: |t| !t.token.contains(" ") && t.token.len() > 1,
+            filter_tokens: |t| {
+                !t.token.contains(" ")
+                    && t.token.len() > 1
+                    && !t.only_ctag(|ct| ct.kind == TokenKind::RSpecDescribe)
+            },
             tokens: Token::all(),
             files: CodebaseFiles::all().paths,
             display_progress: true,

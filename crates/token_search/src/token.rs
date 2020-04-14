@@ -35,6 +35,13 @@ impl Token {
         self.definitions.iter().filter_map(|d| d.language).collect()
     }
 
+    pub fn only_ctag<F>(&self, check: F) -> bool
+    where
+        F: FnOnce(&CtagItem) -> bool + Copy,
+    {
+        self.definitions.iter().all(|ct| check(ct))
+    }
+
     fn build_tokens_from_outcome(outcome: Vec<CtagItem>) -> Vec<Token> {
         outcome
             .into_iter()
