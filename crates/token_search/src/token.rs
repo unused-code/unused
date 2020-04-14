@@ -45,13 +45,49 @@ impl Token {
     fn build_tokens_from_outcome(outcome: Vec<CtagItem>) -> Vec<Token> {
         outcome
             .into_iter()
-            .sorted_by_key(|ct| ct.name.to_string())
-            .group_by(|ct| ct.name.to_string())
+            .sorted_by_key(|ct| Self::strip_prepended_punctuation(&ct.name))
+            .group_by(|ct| Self::strip_prepended_punctuation(&ct.name))
             .into_iter()
             .map(|(token, cts)| Token {
                 token,
                 definitions: cts.collect(),
             })
             .collect()
+    }
+
+    fn strip_prepended_punctuation(input: &str) -> String {
+        input
+            .trim_start_matches(|c| c == '#' || c == '.')
+            .to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use read_ctags::TokenKind;
+    use std::collections::HashMap;
+
+    #[test]
+    fn building_tokens_collapses_ctags() {
+        let instance_method_spec = CtagItem {
+            name: String::from("#name"),
+            file_path: String::from("spec/models/person_spec.rb"),
+            language: Some(Language::Ruby),
+            tags: HashMap::new(),
+            kind: TokenKind::Class,
+        };
+
+        let instance_method = CtagItem {
+            name: String::from("name"),
+            file_path: String::from("app/models/person.rb"),
+            language: Some(Language::Ruby),
+            tags: HashMap::new(),
+            kind: TokenKind::Class,
+        };
+        let tokens = Token::build_tokens_from_outcome(vec![instance_method_spec, instance_method]);
+
+        assert_eq!(tokens.len(), 1);
+        assert_eq!(tokens.iter().nth(0).unwrap().token, "name");
     }
 }
