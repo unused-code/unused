@@ -57,6 +57,7 @@ pub enum TokenKind {
     L5Subsection,
     // Ruby
     SingletonMethod,
+    RSpecDescribe,
     // Rust
     Field,
     Struct,
@@ -140,6 +141,7 @@ pub fn calculate_kind(language: Option<Language>, char: char) -> TokenKind {
         (Some(Language::Ruby), 'c') => TokenKind::Class,
         (Some(Language::Ruby), 'f') => TokenKind::Method,
         (Some(Language::Ruby), 'm') => TokenKind::Module,
+        (Some(Language::Ruby), 'd') => TokenKind::RSpecDescribe,
         (Some(Language::Rust), 'M') => TokenKind::Macro,
         (Some(Language::Rust), 'P') => TokenKind::Method,
         (Some(Language::Rust), 'c') => TokenKind::Implementation,
