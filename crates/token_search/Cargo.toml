@@ -9,6 +9,7 @@ license = "MIT"
 
 [dependencies]
 nom = "5"
+aho-corasick = "0.7"
 rayon = "1.1"
 codebase_files = { path = "../../crates/codebase_files" }
 itertools = "0.9"

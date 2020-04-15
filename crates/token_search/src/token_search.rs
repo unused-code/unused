@@ -1,4 +1,5 @@
 use super::token::Token;
+use aho_corasick::{AhoCorasickBuilder, MatchKind};
 use codebase_files::CodebaseFiles;
 use indicatif::ParallelProgressIterator;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -124,42 +125,61 @@ impl TokenSearchResults {
 
         let filtered_results = config
             .tokens
+            .clone()
+            .into_iter()
+            .filter(|t| config.filter_token(t))
+            .filter(|t| config.filter_language(t));
+
+        let tokens: Vec<String> = filtered_results
+            .clone()
+            .map(|r| r.token.to_string())
+            .collect();
+        let ac = AhoCorasickBuilder::new()
+            .match_kind(MatchKind::LeftmostLongest)
+            .build(tokens);
+
+        let res = loaded_files
             .par_iter()
-            .filter(|&t| config.filter_token(t))
-            .filter(|&t| config.filter_language(t));
+            .progress_with(config.toggleable_progress_bar(&"🤔 Working...", loaded_files.len()))
+            .fold(HashMap::new, |mut results, (f, contents)| {
+                let mut matches: Vec<usize> = vec![];
 
-        let total_size = filtered_results.clone().count();
-
-        let final_results = filtered_results
-            .progress_with(config.toggleable_progress_bar(&"🤔 Working...", total_size))
-            .fold(Vec::new, |mut acc: Vec<TokenSearchResult>, t| {
-                let occurrences = loaded_files.iter().fold(
-                    HashMap::new(),
-                    |mut map: HashMap<String, usize>, (f, contents)| {
-                        let v = contents.matches(&t.token).count();
-                        if v > 0 {
-                            map.entry(f.to_string()).or_insert(v);
-                        }
-
-                        map
-                    },
-                );
-
-                if !occurrences.is_empty() {
-                    acc.push(TokenSearchResult {
-                        token: t.clone(),
-                        occurrences,
-                    });
+                for mat in ac.find_iter(contents) {
+                    matches.push(mat.pattern());
                 }
 
-                acc
+                for (key, res) in matches
+                    .into_iter()
+                    .sorted_by_key(|&v| v)
+                    .group_by(|&v| v)
+                    .into_iter()
+                    .map(|(idx, res)| (idx, res.count()))
+                    .collect::<Vec<(usize, usize)>>()
+                {
+                    let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
+
+                    file_with_occurrences.insert(f.to_string(), res);
+                }
+
+                results
             })
-            .reduce(Vec::new, |m1, m2| {
-                m2.into_iter().fold(m1, |mut acc, r| {
-                    acc.push(r);
+            .reduce(HashMap::new, |m1, m2| {
+                m2.iter().fold(m1, |mut acc, (k, v)| {
+                    let res = acc.entry(*k).or_insert(HashMap::new());
+                    res.extend(v.clone());
                     acc
                 })
             });
+
+        let lookup: Vec<Token> = filtered_results.collect();
+        let final_results = res.iter().fold(Vec::new(), |mut acc, (idx, occurrences)| {
+            let token = lookup[*idx].clone();
+            acc.push(TokenSearchResult {
+                token,
+                occurrences: occurrences.clone(),
+            });
+            acc
+        });
 
         TokenSearchResults(final_results)
     }
