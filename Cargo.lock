@@ -659,6 +659,7 @@ dependencies = [
  "codebase_files",
  "indicatif",
  "itertools",
+ "nom",
  "rayon",
  "read_ctags",
  "serde",

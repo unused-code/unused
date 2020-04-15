@@ -59,7 +59,7 @@ impl Default for TokenSearchConfig {
                     && t.token.len() > 1
                     && !t.only_ctag(|ct| ct.kind == TokenKind::RSpecDescribe)
             },
-            tokens: Token::all(),
+            tokens: vec![],
             files: CodebaseFiles::all().paths,
             display_progress: true,
             language_restriction: LanguageRestriction::Except(HashSet::from_iter(

@@ -1,7 +1,14 @@
-use token_search::TokenSearchResults;
+use token_search::{Token, TokenSearchConfig, TokenSearchResults};
 
 fn main() {
-    let results = TokenSearchResults::generate();
+    match Token::all() {
+        Ok(outcome) => {
+            let mut config = TokenSearchConfig::default();
+            config.tokens = outcome.to_vec();
+            let results = TokenSearchResults::generate_with_config(&config);
 
-    println!("{}", serde_json::to_string(&results).unwrap());
+            println!("{}", serde_json::to_string(&results).unwrap());
+        }
+        Err(e) => eprintln!("{}", e),
+    }
 }

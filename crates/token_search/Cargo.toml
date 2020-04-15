@@ -8,6 +8,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+nom = "5"
 rayon = "1.1"
 codebase_files = { path = "../../crates/codebase_files" }
 itertools = "0.9"

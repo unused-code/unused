@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use read_ctags::{CtagItem, Language, TagsReader};
+use read_ctags::{CtagItem, Language, ReadCtagsError, TagsReader};
 use serde::Serialize;
 use std::collections::HashSet;
 
@@ -10,14 +10,10 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn all() -> Vec<Token> {
-        match TagsReader::read_from_defaults() {
-            Ok(contents) => match CtagItem::parse(&contents) {
-                Ok(("", outcome)) => Self::build_tokens_from_outcome(outcome),
-                _ => vec![],
-            },
-            Err(_) => vec![],
-        }
+    pub fn all() -> Result<Vec<Token>, ReadCtagsError> {
+        TagsReader::default()
+            .load()
+            .map(Self::build_tokens_from_outcome)
     }
 
     pub fn defined_paths(&self) -> HashSet<String> {

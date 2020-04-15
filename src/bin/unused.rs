@@ -2,7 +2,7 @@ use colored::*;
 use dirs;
 use itertools::Itertools;
 use project_configuration::{ProjectConfiguration, ProjectConfigurations};
-use read_ctags::Language;
+use read_ctags::{Language, ReadCtagsError};
 use serde_json;
 use std::collections::HashSet;
 use std::fs;
@@ -11,7 +11,7 @@ use std::iter::FromIterator;
 use std::path::Path;
 use structopt::StructOpt;
 use token_analysis::*;
-use token_search::{LanguageRestriction, TokenSearchConfig, TokenSearchResults};
+use token_search::{LanguageRestriction, Token, TokenSearchConfig, TokenSearchResults};
 
 #[derive(Debug, StructOpt)]
 #[structopt(
@@ -65,7 +65,28 @@ fn main() {
     if cmd.no_color {
         control::set_override(false);
     }
-    let search_config = build_token_search_config(&cmd);
+
+    match Token::all() {
+        Ok(results) => successful_token_parse(&cmd, &results),
+        Err(e) => failed_token_parse(e),
+    }
+}
+
+fn failed_token_parse(err: ReadCtagsError) {
+    eprintln!("{}", "Failed to parse tags".red());
+    eprintln!("");
+    eprintln!("Uh oh!");
+    eprintln!("");
+    eprintln!("It looks there's an issue with your ctags file; either it doesn't exist, or the formatting is off.");
+    eprintln!("");
+    eprintln!("Ensure you've installed Universal Ctags (https://ctags.io/) and re-run it within your application.");
+    eprintln!("");
+    eprintln!("Error:");
+    eprintln!("{}", format!("{}", err).cyan());
+}
+
+fn successful_token_parse(cmd: &Flags, token_results: &[Token]) {
+    let search_config = build_token_search_config(&cmd, token_results);
     let analysis_filter = build_analysis_filter(&cmd);
 
     let results = TokenSearchResults::generate_with_config(&search_config);
@@ -143,8 +164,10 @@ fn main() {
     }
 }
 
-fn build_token_search_config(cmd: &Flags) -> TokenSearchConfig {
+fn build_token_search_config(cmd: &Flags, token_results: &[Token]) -> TokenSearchConfig {
     let mut search_config = TokenSearchConfig::default();
+    search_config.tokens = token_results.to_vec();
+
     if cmd.no_progress {
         search_config.display_progress = false;
     }
