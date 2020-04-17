@@ -25,6 +25,7 @@ pub enum ValueMatcher {
     StartsWith(String),
     EndsWith(String),
     ExactMatchOnAnyOf(HashSet<String>),
+    StartsWithCapital,
 }
 
 impl ValueMatcher {
@@ -33,6 +34,7 @@ impl ValueMatcher {
             ValueMatcher::StartsWith(v) => haystack.starts_with(v),
             ValueMatcher::EndsWith(v) => haystack.ends_with(v),
             ValueMatcher::ExactMatchOnAnyOf(vs) => vs.contains(haystack),
+            ValueMatcher::StartsWithCapital => haystack.starts_with(|v: char| v.is_uppercase()),
         }
     }
 }
@@ -68,5 +70,11 @@ mod tests {
         assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"foo"));
         assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"bar"));
         assert!(!ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"foobar"));
+    }
+
+    #[test]
+    fn matches_capital() {
+        assert!(ValueMatcher::StartsWithCapital.check(&"Foo"));
+        assert!(!ValueMatcher::StartsWithCapital.check(&"foo"));
     }
 }

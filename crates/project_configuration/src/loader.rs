@@ -79,6 +79,7 @@ impl ProjectConfigurations {
                     "token_starts_with",
                     "token_ends_with",
                     "allowed_tokens",
+                    "class_or_module",
                 ]
                 .iter()
                 .map(|a| Self::parse_assertion_row(a, contents))
@@ -91,6 +92,7 @@ impl ProjectConfigurations {
 
     fn parse_assertion_row(key: &str, contents: &Yaml) -> Option<Assertion> {
         match &contents[key] {
+            Yaml::Boolean(val) => Self::parse_boolean_assertion(key, val),
             Yaml::String(val) => Self::parse_single_assertion(key, val),
             Yaml::Array(vals) => Self::parse_multiple_assertions(
                 key,
@@ -131,6 +133,15 @@ impl ProjectConfigurations {
             _ => None,
         }
     }
+
+    fn parse_boolean_assertion(key: &str, val: &bool) -> Option<Assertion> {
+        match (key, val) {
+            ("class_or_module", true) => {
+                Some(Assertion::TokenAssertion(ValueMatcher::StartsWithCapital))
+            }
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]
@@ -166,6 +177,7 @@ mod tests {
       token_starts_with: test_
     - name: Migrations
       path_starts_with: db/migrate
+      class_or_module: true
     - name: Pundit
       token_ends_with: Policy
       path_ends_with: .rb
@@ -208,6 +220,17 @@ mod tests {
                 matchers: vec![
                     Assertion::PathAssertion(ValueMatcher::EndsWith(String::from(".rb"))),
                     Assertion::TokenAssertion(ValueMatcher::EndsWith(String::from("Policy"))),
+                ]
+            }
+        );
+
+        assert_contains!(
+            &rails_config.low_likelihood,
+            &LowLikelihoodConfig {
+                name: String::from("Migrations"),
+                matchers: vec![
+                    Assertion::PathAssertion(ValueMatcher::StartsWith(String::from("db/migrate"))),
+                    Assertion::TokenAssertion(ValueMatcher::StartsWithCapital),
                 ]
             }
         );
