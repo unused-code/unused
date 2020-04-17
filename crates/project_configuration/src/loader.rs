@@ -1,6 +1,6 @@
 use super::config::*;
 use super::value_assertion::{Assertion, ValueMatcher};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct ProjectConfigurations {
@@ -78,6 +78,7 @@ impl ProjectConfigurations {
                     "path_ends_with",
                     "token_starts_with",
                     "token_ends_with",
+                    "allowed_tokens",
                 ]
                 .iter()
                 .map(|a| Self::parse_assertion_row(a, contents))
@@ -90,12 +91,18 @@ impl ProjectConfigurations {
 
     fn parse_assertion_row(key: &str, contents: &Yaml) -> Option<Assertion> {
         match &contents[key] {
-            Yaml::String(val) => Self::parse_assertion(key, val),
+            Yaml::String(val) => Self::parse_single_assertion(key, val),
+            Yaml::Array(vals) => Self::parse_multiple_assertions(
+                key,
+                vals.into_iter()
+                    .filter_map(|v| v.clone().into_string())
+                    .collect(),
+            ),
             _ => None,
         }
     }
 
-    fn parse_assertion(key: &str, val: &str) -> Option<Assertion> {
+    fn parse_single_assertion(key: &str, val: &str) -> Option<Assertion> {
         match key {
             "path_starts_with" => Some(Assertion::PathAssertion(ValueMatcher::StartsWith(
                 val.to_string(),
@@ -109,6 +116,18 @@ impl ProjectConfigurations {
             "token_ends_with" => Some(Assertion::TokenAssertion(ValueMatcher::EndsWith(
                 val.to_string(),
             ))),
+            _ => None,
+        }
+    }
+
+    fn parse_multiple_assertions(key: &str, val: Vec<String>) -> Option<Assertion> {
+        match key {
+            "allowed_tokens" => {
+                let values: HashSet<_> = val.iter().cloned().collect();
+                Some(Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(
+                    values,
+                )))
+            }
             _ => None,
         }
     }
@@ -150,6 +169,12 @@ mod tests {
     - name: Pundit
       token_ends_with: Policy
       path_ends_with: .rb
+    - name: Pundit Instance Methods
+      allowed_tokens:
+      - new?
+      - index?
+      - show?
+      path_ends_with: .rb
     - name: JSONAPI::Resources
       token_ends_with: Resource
       path_starts_with: app/resources
@@ -183,6 +208,26 @@ mod tests {
                 matchers: vec![
                     Assertion::PathAssertion(ValueMatcher::EndsWith(String::from(".rb"))),
                     Assertion::TokenAssertion(ValueMatcher::EndsWith(String::from("Policy"))),
+                ]
+            }
+        );
+
+        assert_contains!(
+            &rails_config.low_likelihood,
+            &LowLikelihoodConfig {
+                name: String::from("Pundit Instance Methods"),
+                matchers: vec![
+                    Assertion::PathAssertion(ValueMatcher::EndsWith(String::from(".rb"))),
+                    Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(
+                        vec![
+                            String::from("new?"),
+                            String::from("index?"),
+                            String::from("show?")
+                        ]
+                        .iter()
+                        .cloned()
+                        .collect()
+                    )),
                 ]
             }
         );

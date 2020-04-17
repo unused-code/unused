@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use token_search::TokenSearchResult;
 
 #[derive(Clone, Debug, PartialEq)]
@@ -23,6 +24,7 @@ impl Assertion {
 pub enum ValueMatcher {
     StartsWith(String),
     EndsWith(String),
+    ExactMatchOnAnyOf(HashSet<String>),
 }
 
 impl ValueMatcher {
@@ -30,6 +32,7 @@ impl ValueMatcher {
         match self {
             ValueMatcher::StartsWith(v) => haystack.starts_with(v),
             ValueMatcher::EndsWith(v) => haystack.ends_with(v),
+            ValueMatcher::ExactMatchOnAnyOf(vs) => vs.contains(haystack),
         }
     }
 }
@@ -56,5 +59,14 @@ mod tests {
     fn matches_ends_with() {
         assert!(ValueMatcher::EndsWith(bar()).check(&"foobar"));
         assert!(!ValueMatcher::EndsWith(foo()).check(&"foobar"));
+    }
+
+    #[test]
+    fn matches_any_of() {
+        let values: HashSet<_> = vec![foo(), bar()].iter().cloned().collect();
+
+        assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"foo"));
+        assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"bar"));
+        assert!(!ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"foobar"));
     }
 }
