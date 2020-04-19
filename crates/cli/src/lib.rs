@@ -2,11 +2,11 @@ mod analyzed_token;
 mod cli_configuration;
 mod error_message;
 mod flags;
+mod formatters;
 
 use cli_configuration::CliConfiguration;
 use colored::*;
 use flags::Flags;
-use serde_json;
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use structopt::StructOpt;
@@ -32,67 +32,14 @@ fn successful_token_parse(cmd: Flags, token_results: &[Token]) {
         build_analysis_filter(&cmd),
     );
 
+    format(cmd)(cli_config)
+}
+
+fn format(cmd: Flags) -> Box<dyn Fn(CliConfiguration) -> ()> {
     if cmd.json {
-        println!("{}", serde_json::to_string(&cli_config.for_json()).unwrap())
+        Box::new(|v| formatters::json::format(v))
     } else {
-        let mut files_list = HashSet::new();
-        let mut tokens_list = HashSet::new();
-
-        for analysis in cli_config.analyses() {
-            tokens_list.insert(analysis.token.clone());
-            for v in analysis.files {
-                files_list.insert(v);
-            }
-
-            let display_token = match analysis.likelihood_status {
-                UsageLikelihoodStatus::High => analysis.token.red(),
-                UsageLikelihoodStatus::Medium => analysis.token.yellow(),
-                UsageLikelihoodStatus::Low => analysis.token.green(),
-            };
-            println!("{}", display_token);
-            println!("   Reason: {}", analysis.likelihood_reason.cyan());
-
-            println!(
-                "   Defined in: ({})",
-                analysis.defined_paths.len().to_string().yellow()
-            );
-            for d in analysis.defined_paths {
-                println!("   * {}", d.yellow());
-            }
-
-            let occurred_count = analysis.occurred_paths.len();
-
-            if occurred_count > 0 {
-                println!("   Found in: ({})", occurred_count.to_string().yellow());
-                for d in &analysis.occurred_paths {
-                    println!("   * {}", d.yellow());
-                }
-            }
-
-            println!("");
-        }
-
-        println!("");
-        println!("{}", "== UNUSED SUMMARY ==".white());
-        println!("   Tokens found: {}", colorize_total(tokens_list.len()));
-        println!("   Files found: {}", colorize_total(files_list.len()));
-        println!(
-            "   Applied language filters: {}",
-            format!("{}", cli_config.language_restriction()).cyan()
-        );
-        println!(
-            "   Sort order: {}",
-            format!("{}", cli_config.sort_order()).cyan()
-        );
-        println!(
-            "   Usage likelihood: {}",
-            cli_config.usage_likelihood_filter().join(", ").cyan()
-        );
-        println!(
-            "   Configuration setting: {}",
-            cli_config.configuration_name().cyan()
-        );
-        println!("");
+        Box::new(|v| formatters::standard::format(v))
     }
 }
 
@@ -139,13 +86,6 @@ fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
     }
 
     analysis_filter
-}
-
-fn colorize_total(amount: usize) -> colored::ColoredString {
-    match amount {
-        0 => "0".green(),
-        _ => amount.to_string().red(),
-    }
 }
 
 fn to_hash_set<T>(input: &[T]) -> HashSet<T>
