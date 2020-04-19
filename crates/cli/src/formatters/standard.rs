@@ -1,9 +1,10 @@
 use super::super::cli_configuration::CliConfiguration;
+use super::super::flags::Flags;
 use colored::*;
 use std::collections::HashSet;
 use token_analysis::UsageLikelihoodStatus;
 
-pub fn format(cli_config: CliConfiguration) {
+pub fn format(cmd: Flags, cli_config: CliConfiguration) {
     let mut files_list = HashSet::new();
     let mut tokens_list = HashSet::new();
 
@@ -41,7 +42,9 @@ pub fn format(cli_config: CliConfiguration) {
         println!("");
     }
 
-    usage_summary(tokens_list.len(), files_list.len(), cli_config);
+    if !cmd.no_summary {
+        usage_summary(tokens_list.len(), files_list.len(), cli_config);
+    }
 }
 
 fn usage_summary(tokens_count: usize, files_count: usize, cli_config: CliConfiguration) {

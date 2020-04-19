@@ -13,6 +13,10 @@ pub struct Flags {
     #[structopt(long)]
     pub no_color: bool,
 
+    /// Disable summary
+    #[structopt(long)]
+    pub no_summary: bool,
+
     /// Render output as JSON
     #[structopt(long)]
     pub json: bool,

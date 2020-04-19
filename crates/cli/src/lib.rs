@@ -35,11 +35,11 @@ fn successful_token_parse(cmd: Flags, token_results: &[Token]) {
     format(cmd)(cli_config)
 }
 
-fn format(cmd: Flags) -> Box<dyn Fn(CliConfiguration) -> ()> {
+fn format(cmd: Flags) -> Box<dyn FnOnce(CliConfiguration) -> ()> {
     if cmd.json {
         Box::new(|v| formatters::json::format(v))
     } else {
-        Box::new(|v| formatters::standard::format(v))
+        Box::new(|v| formatters::standard::format(cmd, v))
     }
 }
 
