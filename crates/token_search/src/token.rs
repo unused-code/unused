@@ -7,24 +7,29 @@ use std::collections::HashSet;
 pub struct Token {
     pub token: String,
     pub definitions: Vec<CtagItem>,
+    pub defined_paths: HashSet<String>,
 }
 
 impl Token {
+    pub fn new(token: String, definitions: Vec<CtagItem>) -> Self {
+        Self {
+            token,
+            definitions: definitions.to_vec(),
+            defined_paths: definitions
+                .iter()
+                .map(|v| v.file_path.to_string())
+                .collect(),
+        }
+    }
+
     pub fn all() -> Result<Vec<Token>, ReadCtagsError> {
         TagsReader::default()
             .load()
             .map(Self::build_tokens_from_outcome)
     }
 
-    pub fn defined_paths(&self) -> HashSet<String> {
-        self.definitions
-            .iter()
-            .map(|v| v.file_path.to_string())
-            .collect()
-    }
-
     pub fn first_path(&self) -> String {
-        self.defined_paths().iter().nth(0).unwrap().to_string()
+        self.defined_paths.iter().nth(0).unwrap().to_string()
     }
 
     pub fn languages(&self) -> Vec<Language> {
@@ -44,10 +49,7 @@ impl Token {
             .sorted_by_key(|ct| Self::strip_prepended_punctuation(&ct.name))
             .group_by(|ct| Self::strip_prepended_punctuation(&ct.name))
             .into_iter()
-            .map(|(token, cts)| Token {
-                token,
-                definitions: cts.collect(),
-            })
+            .map(|(token, cts)| Token::new(token, cts.collect()))
             .collect()
     }
 

@@ -230,7 +230,7 @@ pub struct TokenSearchResult {
 
 impl TokenSearchResult {
     pub fn defined_paths(&self) -> HashSet<String> {
-        self.token.defined_paths()
+        self.token.defined_paths.clone()
     }
 
     pub fn occurred_paths(&self) -> HashSet<String> {

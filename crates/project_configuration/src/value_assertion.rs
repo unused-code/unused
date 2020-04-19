@@ -12,7 +12,7 @@ impl Assertion {
         match self {
             Assertion::PathAssertion(matcher) => token_search_result
                 .token
-                .defined_paths()
+                .defined_paths
                 .iter()
                 .any(|path| matcher.check(path)),
             Assertion::TokenAssertion(matcher) => matcher.check(&token_search_result.token.token),

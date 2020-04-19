@@ -100,16 +100,16 @@ mod tests {
     use token_search::Token;
 
     fn build_ruby_file(token: &str, path: &str, kind: TokenKind) -> Token {
-        Token {
-            token: token.to_string(),
-            definitions: vec![CtagItem {
+        Token::new(
+            token.to_string(),
+            vec![CtagItem {
                 name: token.to_string(),
                 file_path: path.to_string(),
                 language: Some(Language::Ruby),
                 tags: HashMap::new(),
                 kind: kind,
             }],
-        }
+        )
     }
 
     #[test]
