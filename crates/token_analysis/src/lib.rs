@@ -4,5 +4,5 @@ mod token_usage;
 mod usage_likelihood;
 
 pub use analysis_filter::*;
-pub use token_usage::TokenUsageResults;
+pub use token_usage::{TokenUsage, TokenUsageResults};
 pub use usage_likelihood::*;
