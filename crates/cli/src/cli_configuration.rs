@@ -83,14 +83,14 @@ impl CliConfiguration {
     }
 }
 
-fn calculate_config_by_results(_results: &TokenSearchResults) -> Option<ProjectConfiguration> {
+fn calculate_config_by_results(results: &TokenSearchResults) -> Option<ProjectConfiguration> {
     let config_path: Option<String> = dirs::home_dir().and_then(|ref p| {
         let final_path = Path::new(p).join(".unused.yml");
         final_path.to_str().map(|v| v.to_owned())
     });
     match config_path {
         Some(path) => match read_file(&path) {
-            Ok(contents) => ProjectConfigurations::load(&contents).get("Rails"),
+            Ok(contents) => ProjectConfigurations::load(&contents).best_match(results),
             _ => None,
         },
         None => None,

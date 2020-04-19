@@ -1,6 +1,6 @@
 use super::value_assertion::Assertion;
 use std::path::Path;
-use token_search::TokenSearchResult;
+use token_search::{TokenSearchResult, TokenSearchResults};
 
 #[derive(Clone)]
 pub struct ProjectConfiguration {
@@ -9,6 +9,7 @@ pub struct ProjectConfiguration {
     pub test_file: Vec<PathPrefix>,
     pub config_file: Vec<PathPrefix>,
     pub low_likelihood: Vec<LowLikelihoodConfig>,
+    pub matches_if: Vec<Assertion>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -44,6 +45,7 @@ impl ProjectConfiguration {
             test_file: vec![PathPrefix::new("test/")],
             config_file: vec![],
             low_likelihood: vec![],
+            matches_if: vec![],
         }
     }
 
@@ -54,5 +56,14 @@ impl ProjectConfiguration {
         self.low_likelihood
             .iter()
             .find(|ll| ll.matches(token_search_result))
+    }
+
+    pub fn codebase_config_match(&self, results: &TokenSearchResults) -> bool {
+        self.matches_if.iter().all(|assertion| {
+            results
+                .value()
+                .iter()
+                .any(|result| assertion.matches(result))
+        })
     }
 }

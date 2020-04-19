@@ -1,6 +1,7 @@
 use super::config::*;
 use super::value_assertion::{Assertion, ValueMatcher};
 use std::collections::{HashMap, HashSet};
+use token_search::TokenSearchResults;
 use yaml_rust::{Yaml, YamlLoader};
 
 pub struct ProjectConfigurations {
@@ -18,6 +19,14 @@ impl ProjectConfigurations {
             _ => HashMap::new(),
         };
         ProjectConfigurations { configs }
+    }
+
+    pub fn best_match(&self, results: &TokenSearchResults) -> Option<ProjectConfiguration> {
+        self.configs
+            .iter()
+            .filter(|(_, config)| config.codebase_config_match(results))
+            .nth(0)
+            .map(|(_, v)| v.clone())
     }
 
     fn parse_all_from_yaml(contents: &[Yaml]) -> HashMap<String, ProjectConfiguration> {
@@ -44,6 +53,7 @@ impl ProjectConfigurations {
             test_file: Self::parse_path_prefixes("test_files", contents),
             config_file: Self::parse_path_prefixes("config_files", contents),
             low_likelihood: Self::parse_low_likelihoods(contents),
+            matches_if: Self::parse_matches_if(contents),
         }
     }
 
@@ -69,6 +79,37 @@ impl ProjectConfigurations {
             _ => vec![],
         }
     }
+
+    fn parse_matches_if(contents: &Yaml) -> Vec<Assertion> {
+        match &contents["matches_if"] {
+            Yaml::Array(items) => items
+                .iter()
+                .flat_map(|i| Self::parse_individual_matches_if(i))
+                .collect(),
+            _ => vec![],
+        }
+    }
+
+    fn parse_individual_matches_if(contents: &Yaml) -> Vec<Assertion> {
+        vec![
+            "path_starts_with",
+            "path_ends_with",
+            "path_equals",
+            "token_equals",
+            "token_starts_with",
+            "token_ends_with",
+            "allowed_tokens",
+            "class_or_module",
+        ]
+        .iter()
+        .map(|&k| match &contents[k] {
+            Yaml::String(v) => Self::parse_single_assertion(k, &v),
+            _ => None,
+        })
+        .filter_map(|a| a)
+        .collect()
+    }
+
     fn parse_low_likelihood_item(contents: &Yaml) -> Option<LowLikelihoodConfig> {
         match &contents["name"] {
             Yaml::String(name) => Some(LowLikelihoodConfig {
@@ -76,8 +117,10 @@ impl ProjectConfigurations {
                 matchers: vec![
                     "path_starts_with",
                     "path_ends_with",
+                    "path_equals",
                     "token_starts_with",
                     "token_ends_with",
+                    "token_equals",
                     "allowed_tokens",
                     "class_or_module",
                 ]
@@ -112,10 +155,16 @@ impl ProjectConfigurations {
             "path_ends_with" => Some(Assertion::PathAssertion(ValueMatcher::EndsWith(
                 val.to_string(),
             ))),
+            "path_equals" => Some(Assertion::PathAssertion(ValueMatcher::Equals(
+                val.to_string(),
+            ))),
             "token_starts_with" => Some(Assertion::TokenAssertion(ValueMatcher::StartsWith(
                 val.to_string(),
             ))),
             "token_ends_with" => Some(Assertion::TokenAssertion(ValueMatcher::EndsWith(
+                val.to_string(),
+            ))),
+            "token_equals" => Some(Assertion::TokenAssertion(ValueMatcher::Equals(
                 val.to_string(),
             ))),
             _ => None,
@@ -152,6 +201,10 @@ mod tests {
     fn yaml_contents() -> String {
         "
 - name: Phoenix
+  matches_if:
+  - token_equals: Application
+  - token_equals: Endpoint
+  - token_equals: Repo
   application_files:
   - lib/
   - web/
@@ -277,6 +330,15 @@ mod tests {
         assert_eq!(
             phoenix_config.application_file,
             vec![PathPrefix::new("lib/"), PathPrefix::new("web/")]
+        );
+
+        assert_eq!(
+            phoenix_config.matches_if,
+            vec![
+                Assertion::TokenAssertion(ValueMatcher::Equals(String::from("Application"))),
+                Assertion::TokenAssertion(ValueMatcher::Equals(String::from("Endpoint"))),
+                Assertion::TokenAssertion(ValueMatcher::Equals(String::from("Repo"))),
+            ]
         );
 
         assert_eq!(phoenix_config.test_file, vec![PathPrefix::new("test/"),]);
