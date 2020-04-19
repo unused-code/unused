@@ -42,6 +42,26 @@ impl CliConfiguration {
             .collect()
     }
 
+    pub fn max_token_length(&self) -> usize {
+        self.outcome
+            .filter(&self.analysis_filter)
+            .iter()
+            .map(|t| t.result.token.token.len())
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub fn max_file_length(&self) -> usize {
+        self.outcome
+            .filter(&self.analysis_filter)
+            .iter()
+            .map(|t| t.result.token.first_path().len())
+            .into_iter()
+            .max()
+            .unwrap_or(0)
+    }
+
     pub fn language_restriction(&self) -> String {
         self.token_search_config.language_restriction.to_string()
     }

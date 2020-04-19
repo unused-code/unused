@@ -1,4 +1,5 @@
 use read_ctags::Language;
+use std::str::FromStr;
 use structopt::StructOpt;
 use token_analysis::{OrderField, UsageLikelihoodStatus};
 
@@ -50,4 +51,28 @@ pub struct Flags {
     /// Limit tokens to those defined except for the provided file extension(s)
     #[structopt(long, possible_values = &Language::extensions(), use_delimiter = true)]
     pub except_filetypes: Vec<Language>,
+
+    /// Format output
+    #[structopt(long, possible_values = &["standard", "compact", "json"], default_value = "standard", case_insensitive = true)]
+    pub format: Format,
+}
+
+#[derive(Debug)]
+pub enum Format {
+    Standard,
+    Compact,
+    Json,
+}
+
+impl FromStr for Format {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_ref() {
+            "standard" => Ok(Format::Standard),
+            "compact" => Ok(Format::Compact),
+            "json" => Ok(Format::Json),
+            v => Err(format!("Unknown format: {}", v)),
+        }
+    }
 }

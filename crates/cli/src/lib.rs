@@ -6,7 +6,7 @@ mod formatters;
 
 use cli_configuration::CliConfiguration;
 use colored::*;
-use flags::Flags;
+use flags::{Flags, Format};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use structopt::StructOpt;
@@ -14,7 +14,10 @@ use token_analysis::{AnalysisFilter, UsageLikelihoodStatus};
 use token_search::{LanguageRestriction, Token, TokenSearchConfig};
 
 pub fn run() {
-    let cmd = Flags::from_args();
+    let mut cmd = Flags::from_args();
+    if cmd.json {
+        cmd.format = Format::Json;
+    }
 
     if cmd.no_color {
         control::set_override(false);
@@ -36,10 +39,10 @@ fn successful_token_parse(cmd: Flags, token_results: &[Token]) {
 }
 
 fn format(cmd: Flags) -> Box<dyn FnOnce(CliConfiguration) -> ()> {
-    if cmd.json {
-        Box::new(|v| formatters::json::format(v))
-    } else {
-        Box::new(|v| formatters::standard::format(cmd, v))
+    match cmd.format {
+        Format::Json => Box::new(|v| formatters::json::format(v)),
+        Format::Standard => Box::new(|v| formatters::standard::format(cmd, v)),
+        Format::Compact => Box::new(|v| formatters::compact::format(v)),
     }
 }
 
