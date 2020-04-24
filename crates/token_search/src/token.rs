@@ -74,6 +74,7 @@ mod tests {
         let instance_method_spec = CtagItem {
             name: String::from("#name"),
             file_path: String::from("spec/models/person_spec.rb"),
+            address: String::from("1"),
             language: Some(Language::Ruby),
             tags: BTreeMap::new(),
             kind: TokenKind::Class,
@@ -82,6 +83,7 @@ mod tests {
         let instance_method = CtagItem {
             name: String::from("name"),
             file_path: String::from("app/models/person.rb"),
+            address: String::from("1"),
             language: Some(Language::Ruby),
             tags: BTreeMap::new(),
             kind: TokenKind::Class,

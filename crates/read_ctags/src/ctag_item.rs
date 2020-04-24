@@ -10,6 +10,7 @@ use std::fmt;
 pub struct CtagItem {
     pub name: String,
     pub file_path: String,
+    pub address: String,
     pub language: Option<Language>,
     pub tags: BTreeMap<String, String>,
     pub kind: TokenKind,

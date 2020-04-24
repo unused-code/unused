@@ -57,7 +57,7 @@ fn fields_parser(input: &str) -> IResult<&str, Vec<ParsedField>> {
     preceded(tag("\t"), separated_list(tag("\t"), field_parser))(input)
 }
 
-fn address_and_fields_parser(input: &str) -> IResult<&str, (&str, Vec<ParsedField>)> {
+fn address_and_fields_parser(input: &str) -> IResult<&str, (String, Vec<ParsedField>)> {
     alt((
         tuple((tag_address_parser, fields_parser)),
         tuple((
@@ -67,21 +67,24 @@ fn address_and_fields_parser(input: &str) -> IResult<&str, (&str, Vec<ParsedFiel
     ))(input)
 }
 
-fn tag_address_parser(input: &str) -> IResult<&str, &str> {
+fn tag_address_parser(input: &str) -> IResult<&str, String> {
     terminated(
-        verify(take_until(";\""), |s: &str| !s.contains('\n')),
+        map(
+            verify(take_until(";\""), |s: &str| !s.contains('\n')),
+            |v: &str| v.to_string(),
+        ),
         tag(";\""),
     )(input)
 }
 
-fn tag_address_without_fields_parser(input: &str) -> IResult<&str, &str> {
-    internal::to_newline(input)
+fn tag_address_without_fields_parser(input: &str) -> IResult<&str, String> {
+    map(internal::to_newline, |v| v.to_string())(input)
 }
 
 fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
     let (input, name) = context("tagName", internal::to_tab)(input)?;
     let (input, file_path) = context("tagPath", internal::to_tab)(input)?;
-    let (input, (_, parsed_fields)) = address_and_fields_parser(input)?;
+    let (input, (address, parsed_fields)) = address_and_fields_parser(input)?;
     let language = Language::from_path(file_path);
     let (kind, tags) = build_kind_and_fields(language, parsed_fields);
 
@@ -90,6 +93,7 @@ fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
         CtagItem {
             name: name.to_string(),
             file_path: file_path.trim_start_matches("../").to_string(),
+            address,
             language,
             tags,
             kind,
@@ -124,6 +128,7 @@ fn parses_without_metadata() {
     let result: HashSet<CtagItem> = vec![CtagItem {
         name: String::from("withInfo"),
         file_path: String::from("path/to/file.rb"),
+        address: String::from("45"),
         language: Some(Language::Ruby),
         tags: BTreeMap::new(),
         kind: TokenKind::Undefined,
@@ -156,6 +161,7 @@ fn parses_item_lines() {
             CtagItem {
                 name: String::from("withInfo"),
                 file_path: String::from("path/to/file.rb"),
+                address: String::from("45"),
                 language: Some(Language::Ruby),
                 tags: BTreeMap::new(),
                 kind: TokenKind::Undefined
@@ -174,6 +180,7 @@ fn parses_multiple_lines() {
                 CtagItem {
                     name: String::from("first"),
                     file_path: String::from("path/to/file.rb"),
+                    address: String::from("1"),
                     language: Some(Language::Ruby),
                     tags: BTreeMap::new(),
                     kind: TokenKind::Undefined
@@ -181,6 +188,7 @@ fn parses_multiple_lines() {
                 CtagItem {
                     name: String::from("second"),
                     file_path: String::from("path/to/file.rb"),
+                    address: String::from("2"),
                     language: Some(Language::Ruby),
                     tags: BTreeMap::new(),
                     kind: TokenKind::Class
@@ -234,7 +242,7 @@ fn parses_addresses_with_fields() {
         Ok((
             "",
             (
-                "/^  context \"#active\" do$/",
+                String::from("/^  context \"#active\" do$/"),
                 vec![ParsedField::KindField('c'),]
             )
         ))
@@ -248,7 +256,7 @@ fn parses_when_address_includes_semicolon() {
         Ok((
             "",
             (
-                "/^$z-tooltip: $base-z-index + 18;$/",
+                String::from("/^$z-tooltip: $base-z-index + 18;$/"),
                 vec![ParsedField::KindField('v'),]
             )
         ))

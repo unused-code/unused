@@ -105,6 +105,7 @@ mod tests {
             vec![CtagItem {
                 name: token.to_string(),
                 file_path: path.to_string(),
+                address: String::from("1"),
                 language: Some(Language::Ruby),
                 tags: BTreeMap::new(),
                 kind: kind,
