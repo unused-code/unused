@@ -3,15 +3,15 @@ use super::parser;
 use super::token_kind::TokenKind;
 use nom::IResult;
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fmt;
 
-#[derive(Clone, Debug, Eq, Serialize, PartialEq)]
+#[derive(Clone, Hash, Debug, Eq, Serialize, PartialEq)]
 pub struct CtagItem {
     pub name: String,
     pub file_path: String,
     pub language: Option<Language>,
-    pub tags: HashMap<String, String>,
+    pub tags: BTreeMap<String, String>,
     pub kind: TokenKind,
 }
 
@@ -26,7 +26,7 @@ impl fmt::Display for CtagItem {
 }
 
 impl CtagItem {
-    pub fn parse(input: &str) -> IResult<&str, Vec<CtagItem>> {
+    pub fn parse(input: &str) -> IResult<&str, HashSet<CtagItem>> {
         parser::parse(input)
     }
 }

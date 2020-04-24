@@ -96,7 +96,7 @@ impl UsageLikelihood {
 mod tests {
     use super::*;
     use read_ctags::{CtagItem, Language, TokenKind};
-    use std::collections::HashMap;
+    use std::collections::{BTreeMap, HashMap};
     use token_search::Token;
 
     fn build_ruby_file(token: &str, path: &str, kind: TokenKind) -> Token {
@@ -106,9 +106,12 @@ mod tests {
                 name: token.to_string(),
                 file_path: path.to_string(),
                 language: Some(Language::Ruby),
-                tags: HashMap::new(),
+                tags: BTreeMap::new(),
                 kind: kind,
-            }],
+            }]
+            .iter()
+            .cloned()
+            .collect(),
         )
     }
 

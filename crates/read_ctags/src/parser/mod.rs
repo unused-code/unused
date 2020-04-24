@@ -12,7 +12,7 @@ use nom::{
     sequence::{preceded, separated_pair, terminated, tuple},
     IResult,
 };
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashSet};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ParsedField<'a> {
@@ -20,9 +20,14 @@ pub enum ParsedField<'a> {
     ParsedField(&'a str, &'a str),
 }
 
-pub fn parse(input: &str) -> IResult<&str, Vec<CtagItem>> {
+pub fn parse(input: &str) -> IResult<&str, HashSet<CtagItem>> {
     let (input, _) = internal::tag_metadata(input)?;
-    terminated(separated_list(tag("\n"), ctag_item_parser), tag("\n"))(input)
+    terminated(
+        map(separated_list(tag("\n"), ctag_item_parser), |res| {
+            res.iter().cloned().collect()
+        }),
+        tag("\n"),
+    )(input)
 }
 
 fn is_kind(field: &ParsedField) -> bool {
@@ -95,11 +100,11 @@ fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
 fn build_kind_and_fields<'a>(
     language: Option<Language>,
     parsed_fields: Vec<ParsedField<'a>>,
-) -> (TokenKind, HashMap<String, String>) {
+) -> (TokenKind, BTreeMap<String, String>) {
     let (kind, rest): (Vec<ParsedField>, Vec<ParsedField>) =
         parsed_fields.iter().partition(|&f| is_kind(f));
 
-    let mut hash = HashMap::new();
+    let mut hash = BTreeMap::new();
 
     for field in rest.iter() {
         match field {
@@ -132,7 +137,7 @@ fn parses_item_lines() {
                 name: String::from("withInfo"),
                 file_path: String::from("path/to/file.rb"),
                 language: Some(Language::Ruby),
-                tags: HashMap::new(),
+                tags: BTreeMap::new(),
                 kind: TokenKind::Undefined
             }
         ))
@@ -150,17 +155,20 @@ fn parses_multiple_lines() {
                     name: String::from("first"),
                     file_path: String::from("path/to/file.rb"),
                     language: Some(Language::Ruby),
-                    tags: HashMap::new(),
+                    tags: BTreeMap::new(),
                     kind: TokenKind::Undefined
                 },
                 CtagItem {
                     name: String::from("second"),
                     file_path: String::from("path/to/file.rb"),
                     language: Some(Language::Ruby),
-                    tags: HashMap::new(),
+                    tags: BTreeMap::new(),
                     kind: TokenKind::Class
                 }
             ]
+            .iter()
+            .cloned()
+            .collect()
         ))
     );
 }

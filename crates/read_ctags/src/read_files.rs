@@ -1,5 +1,6 @@
 use super::CtagItem;
 use nom;
+use std::collections::HashSet;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::fs;
@@ -42,7 +43,7 @@ impl<'a> Default for TagsReader<'a> {
 }
 
 impl<'a> TagsReader<'a> {
-    pub fn load(&self) -> Result<Vec<CtagItem>, ReadCtagsError> {
+    pub fn load(&self) -> Result<HashSet<CtagItem>, ReadCtagsError> {
         match self.read() {
             Ok(contents) => match CtagItem::parse(&contents) {
                 Ok(("", outcome)) => Ok(outcome),

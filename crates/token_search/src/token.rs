@@ -6,19 +6,22 @@ use std::collections::HashSet;
 #[derive(Clone, Serialize)]
 pub struct Token {
     pub token: String,
-    pub definitions: Vec<CtagItem>,
+    pub definitions: HashSet<CtagItem>,
     pub defined_paths: HashSet<String>,
 }
 
 impl Token {
-    pub fn new(token: String, definitions: Vec<CtagItem>) -> Self {
+    pub fn new(token: String, definitions: HashSet<CtagItem>) -> Self {
+        let defined_paths = definitions
+            .iter()
+            .map(|v| v.file_path.to_string())
+            .collect::<HashSet<_>>()
+            .clone();
+
         Self {
             token,
-            definitions: definitions.to_vec(),
-            defined_paths: definitions
-                .iter()
-                .map(|v| v.file_path.to_string())
-                .collect(),
+            definitions,
+            defined_paths,
         }
     }
 
@@ -43,7 +46,7 @@ impl Token {
         self.definitions.iter().all(|ct| check(ct))
     }
 
-    fn build_tokens_from_outcome(outcome: Vec<CtagItem>) -> Vec<Token> {
+    fn build_tokens_from_outcome(outcome: HashSet<CtagItem>) -> Vec<Token> {
         outcome
             .into_iter()
             .sorted_by_key(|ct| Self::strip_prepended_punctuation(&ct.name))
@@ -64,7 +67,7 @@ impl Token {
 mod tests {
     use super::*;
     use read_ctags::TokenKind;
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     #[test]
     fn building_tokens_collapses_ctags() {
@@ -72,7 +75,7 @@ mod tests {
             name: String::from("#name"),
             file_path: String::from("spec/models/person_spec.rb"),
             language: Some(Language::Ruby),
-            tags: HashMap::new(),
+            tags: BTreeMap::new(),
             kind: TokenKind::Class,
         };
 
@@ -80,10 +83,15 @@ mod tests {
             name: String::from("name"),
             file_path: String::from("app/models/person.rb"),
             language: Some(Language::Ruby),
-            tags: HashMap::new(),
+            tags: BTreeMap::new(),
             kind: TokenKind::Class,
         };
-        let tokens = Token::build_tokens_from_outcome(vec![instance_method_spec, instance_method]);
+        let tokens = Token::build_tokens_from_outcome(
+            vec![instance_method_spec, instance_method]
+                .iter()
+                .cloned()
+                .collect(),
+        );
 
         assert_eq!(tokens.len(), 1);
         assert_eq!(tokens.iter().nth(0).unwrap().token, "name");
