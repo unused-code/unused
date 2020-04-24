@@ -6,7 +6,7 @@ use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while},
     character::complete::{alphanumeric1, anychar},
-    combinator::{map, verify},
+    combinator::{map, opt, verify},
     error::context,
     multi::separated_list,
     sequence::{preceded, separated_pair, terminated, tuple},
@@ -21,12 +21,12 @@ pub enum ParsedField<'a> {
 }
 
 pub fn parse(input: &str) -> IResult<&str, HashSet<CtagItem>> {
-    let (input, _) = internal::tag_metadata(input)?;
+    let (input, _) = opt(internal::tag_metadata)(input)?;
     terminated(
         map(separated_list(tag("\n"), ctag_item_parser), |res| {
             res.iter().cloned().collect()
         }),
-        tag("\n"),
+        opt(tag("\n")),
     )(input)
 }
 
@@ -117,6 +117,26 @@ fn build_kind_and_fields<'a>(
         (1, Some(ParsedField::KindField(c))) => (calculate_kind(language, *c), hash),
         (_, _) => (TokenKind::Undefined, hash),
     }
+}
+
+#[test]
+fn parses_without_metadata() {
+    let result: HashSet<CtagItem> = vec![CtagItem {
+        name: String::from("withInfo"),
+        file_path: String::from("path/to/file.rb"),
+        language: Some(Language::Ruby),
+        tags: BTreeMap::new(),
+        kind: TokenKind::Undefined,
+    }]
+    .iter()
+    .cloned()
+    .collect();
+
+    assert_eq!(
+        parse("withInfo\tpath/to/file.rb\t45"),
+        Ok(("", result.clone()))
+    );
+    assert_eq!(parse("withInfo\tpath/to/file.rb\t45\n"), Ok(("", result)));
 }
 
 #[test]
