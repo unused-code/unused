@@ -1,7 +1,7 @@
-pub mod internal;
+mod internal;
 use super::ctag_item::CtagItem;
 use super::language::Language;
-use super::token_kind::{calculate_kind, TokenKind};
+use super::token_kind::TokenKind;
 use nom::{
     branch::alt,
     bytes::complete::{tag, take_until, take_while},
@@ -15,7 +15,7 @@ use nom::{
 use std::collections::{BTreeMap, HashSet};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum ParsedField<'a> {
+enum ParsedField<'a> {
     KindField(char),
     ParsedField(&'a str, &'a str),
 }
@@ -118,7 +118,7 @@ fn build_kind_and_fields<'a>(
     }
 
     match (kind.len(), kind.get(0)) {
-        (1, Some(ParsedField::KindField(c))) => (calculate_kind(language, *c), hash),
+        (1, Some(ParsedField::KindField(c))) => (TokenKind::from_ctag(language, *c), hash),
         (_, _) => (TokenKind::Undefined, hash),
     }
 }

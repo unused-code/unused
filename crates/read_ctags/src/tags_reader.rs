@@ -7,13 +7,21 @@ use std::fs;
 use std::io;
 use std::io::Error;
 
+/// TagsReader provides a mechanism for attempting to read multiple ctags files until the first is
+/// found
 pub struct TagsReader<'a> {
     filenames: Vec<&'a str>,
 }
 
+/// A struct capturing possible failures when attempting to find and read tags files
 pub enum ReadCtagsError {
+    /// No tags file found
+    ///
+    /// This provides the paths attempted
     NoCtagsFile((Vec<String>, io::Error)),
+    /// Incomplete parse; parsing was successful but didn't consume all input
     IncompleteParse,
+    /// Parsing failed
     FailedParse(nom::Err<(String, nom::error::ErrorKind)>),
 }
 
@@ -43,6 +51,7 @@ impl<'a> Default for TagsReader<'a> {
 }
 
 impl<'a> TagsReader<'a> {
+    /// Loads and parses the first tags file it finds
     pub fn load(&self) -> Result<HashSet<CtagItem>, ReadCtagsError> {
         match self.read() {
             Ok(contents) => match CtagItem::parse(&contents) {

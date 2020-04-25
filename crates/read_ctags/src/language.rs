@@ -2,7 +2,9 @@ use serde::Serialize;
 use std::path::Path;
 use std::str::FromStr;
 
+/// Enum representing languages currently supported
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize)]
+#[allow(missing_docs)]
 pub enum Language {
     CSS,
     Elixir,
@@ -42,6 +44,7 @@ impl std::fmt::Display for Language {
 }
 
 impl Language {
+    /// Given a path with file extension, calculate its language
     pub fn from_path(path: &str) -> Option<Language> {
         match Path::new(path).extension() {
             Some(v) => v.to_str().and_then(|x| Language::from_str(x).ok()),
@@ -49,6 +52,7 @@ impl Language {
         }
     }
 
+    /// All file extensions supported
     pub fn extensions() -> Vec<&'static str> {
         vec![
             "css", "ex", "exs", "elm", "html", "json", "js", "jsx", "md", "rb", "rs", "scss", "sh",
