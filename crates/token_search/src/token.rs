@@ -3,14 +3,19 @@ use read_ctags::{CtagItem, Language, ReadCtagsError, TagsReader};
 use serde::Serialize;
 use std::collections::HashSet;
 
+/// A token based on a set of `CtagItem`s
 #[derive(Clone, Serialize)]
 pub struct Token {
+    /// The token value
     pub token: String,
+    /// The set of `CtagItem`s that compose the token
     pub definitions: HashSet<CtagItem>,
+    /// The paths where a token is defined
     pub defined_paths: HashSet<String>,
 }
 
 impl Token {
+    /// Construct a token based on the value and set of definitions
     pub fn new(token: String, definitions: HashSet<CtagItem>) -> Self {
         let defined_paths = definitions
             .iter()
@@ -25,20 +30,24 @@ impl Token {
         }
     }
 
+    /// Load tokens after reading tags
     pub fn all() -> Result<Vec<Token>, ReadCtagsError> {
         TagsReader::default()
             .load()
             .map(Self::build_tokens_from_outcome)
     }
 
+    /// Provide the first path in the list of defined paths
     pub fn first_path(&self) -> String {
         self.defined_paths.iter().nth(0).unwrap().to_string()
     }
 
+    /// All languages based on matched `CtagItem`s
     pub fn languages(&self) -> HashSet<Language> {
         self.definitions.iter().filter_map(|d| d.language).collect()
     }
 
+    /// Do all `CtagItem`s meet a particular constraint?
     pub fn only_ctag<F>(&self, check: F) -> bool
     where
         F: FnOnce(&CtagItem) -> bool + Copy,

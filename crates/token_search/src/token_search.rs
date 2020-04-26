@@ -14,17 +14,31 @@ use std::fs;
 use std::io;
 use std::iter::FromIterator;
 
+/// A TokenSearchConfig is necessary to construct the list of tokens and files to search against
+/// when generating results.
 pub struct TokenSearchConfig {
+    /// Given a token, determine whether it should be searched for
+    ///
+    /// This might include stripping out tokens that contain spaces, tokens shorter than a
+    /// particular length, or other configuration
     pub filter_tokens: fn(&Token) -> bool,
+    /// Tokens to be used when searching
     pub tokens: Vec<Token>,
+    /// Filenames to search against
     pub files: Vec<String>,
+    /// Should a progress bar be displayed?
     pub display_progress: bool,
+    /// Restrict languages searched (based on file extension)
     pub language_restriction: LanguageRestriction,
 }
 
+/// LanguageRestriction allows for filtering out what's searched
 pub enum LanguageRestriction {
+    /// All lanugages are searched
     NoRestriction,
+    /// Limit languages searched to only these
     Only(HashSet<Language>),
+    /// Limit languages searched to everything but these
     Except(HashSet<Language>),
 }
 
@@ -82,6 +96,9 @@ impl TokenSearchConfig {
         pb
     }
 
+    /// Generate a progress bar with configurable message
+    ///
+    /// This takes into account the `display_progress` flag
     pub fn toggleable_progress_bar(&self, prefix: &str, size: usize) -> ProgressBar {
         if self.display_progress {
             Self::progress_bar(prefix, size)
@@ -90,11 +107,11 @@ impl TokenSearchConfig {
         }
     }
 
-    pub fn filter_token(&self, token: &Token) -> bool {
+    fn filter_token(&self, token: &Token) -> bool {
         (self.filter_tokens)(token)
     }
 
-    pub fn filter_language(&self, token: &Token) -> bool {
+    fn filter_language(&self, token: &Token) -> bool {
         let token_languages: Vec<Language> = token.languages().into_iter().collect();
 
         match &self.language_restriction {
@@ -111,17 +128,21 @@ impl TokenSearchConfig {
     }
 }
 
+/// Search results
 pub struct TokenSearchResults(Vec<TokenSearchResult>);
 
 impl TokenSearchResults {
+    /// Convenience method for generating results with the default config
     pub fn generate() -> Self {
         Self::generate_with_config(&TokenSearchConfig::default())
     }
 
+    /// Extract search results
     pub fn value(&self) -> Vec<TokenSearchResult> {
         self.0.clone()
     }
 
+    /// Generate results based on provided search config
     pub fn generate_with_config(config: &TokenSearchConfig) -> Self {
         let loaded_files = Self::load_all_files(&config.files);
 
@@ -224,17 +245,22 @@ impl Serialize for TokenSearchResults {
     }
 }
 
+/// Search results for a single token
 #[derive(Clone, Serialize)]
 pub struct TokenSearchResult {
+    /// The token being searched
     pub token: Token,
+    /// A HashMap of paths and occurrence counts
     pub occurrences: HashMap<String, usize>,
 }
 
 impl TokenSearchResult {
+    /// The paths where a token is defined
     pub fn defined_paths(&self) -> HashSet<String> {
         self.token.defined_paths.clone()
     }
 
+    /// The paths where a token occurs that are not also where the token is defined
     pub fn occurred_paths(&self) -> HashSet<String> {
         self.all_occurred_paths()
             .difference(&self.defined_paths())
@@ -242,7 +268,7 @@ impl TokenSearchResult {
             .collect()
     }
 
-    pub fn all_occurred_paths(&self) -> HashSet<String> {
+    fn all_occurred_paths(&self) -> HashSet<String> {
         self.occurrences.keys().cloned().collect()
     }
 }
