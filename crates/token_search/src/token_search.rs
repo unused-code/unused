@@ -95,13 +95,15 @@ impl TokenSearchConfig {
     }
 
     pub fn filter_language(&self, token: &Token) -> bool {
+        let token_languages: Vec<Language> = token.languages().into_iter().collect();
+
         match &self.language_restriction {
             LanguageRestriction::NoRestriction => true,
-            LanguageRestriction::Only(languages) => match &(token.languages()[..]) {
+            LanguageRestriction::Only(languages) => match &token_languages[..] {
                 [lang] => languages.contains(lang),
                 _ => false,
             },
-            LanguageRestriction::Except(languages) => match &(token.languages()[..]) {
+            LanguageRestriction::Except(languages) => match &token_languages[..] {
                 [lang] => !languages.contains(lang),
                 _ => true,
             },

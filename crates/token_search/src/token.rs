@@ -35,7 +35,7 @@ impl Token {
         self.defined_paths.iter().nth(0).unwrap().to_string()
     }
 
-    pub fn languages(&self) -> Vec<Language> {
+    pub fn languages(&self) -> HashSet<Language> {
         self.definitions.iter().filter_map(|d| d.language).collect()
     }
 
