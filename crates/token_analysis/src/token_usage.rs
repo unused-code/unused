@@ -58,6 +58,7 @@ impl TokenUsageResults {
                     .usage_likelihood_filter
                     .contains(&a.usage_likelihood.status)
             })
+            .filter(|a| config.ignores_path(&a.result))
             .sorted_by_key(|a| match config.sort_order {
                 SortOrder::Ascending(OrderField::Token) => a.result.token.token.to_string(),
                 SortOrder::Descending(OrderField::Token) => a.result.token.token.to_string(),

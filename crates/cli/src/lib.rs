@@ -7,6 +7,7 @@ mod formatters;
 use cli_configuration::CliConfiguration;
 use colored::*;
 use flags::{Flags, Format};
+use project_configuration::{Assertion, ValueMatcher};
 use std::collections::HashSet;
 use std::iter::FromIterator;
 use structopt::StructOpt;
@@ -87,6 +88,13 @@ fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
     if cmd.reverse {
         analysis_filter.set_order_descending();
     }
+
+    analysis_filter.ignored_by_path = cmd
+        .ignore
+        .clone()
+        .into_iter()
+        .map(|s| Assertion::PathAssertion(ValueMatcher::Contains(s)))
+        .collect();
 
     analysis_filter
 }

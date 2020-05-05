@@ -55,6 +55,12 @@ pub struct Flags {
     /// Format output
     #[structopt(long, possible_values = &["standard", "compact", "json"], default_value = "standard", case_insensitive = true)]
     pub format: Format,
+
+    /// Ignore files/directories matching the provided value
+    ///
+    /// This supports providing multiple values with a comma-delimited list
+    #[structopt(long, use_delimiter = true)]
+    pub ignore: Vec<String>,
 }
 
 #[derive(Debug)]

@@ -1,11 +1,14 @@
 use super::usage_likelihood::UsageLikelihoodStatus;
+use project_configuration::Assertion;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
+use token_search::TokenSearchResult;
 
 pub struct AnalysisFilter {
     pub usage_likelihood_filter: Vec<UsageLikelihoodStatus>,
     pub sort_order: SortOrder,
+    pub ignored_by_path: Vec<Assertion>,
 }
 
 pub enum SortOrder {
@@ -64,6 +67,14 @@ impl AnalysisFilter {
             _ => (),
         }
     }
+
+    pub fn ignores_path(&self, result: &TokenSearchResult) -> bool {
+        if self.ignored_by_path.len() > 0 {
+            !self.ignored_by_path.iter().any(|a| a.matches(result))
+        } else {
+            true
+        }
+    }
 }
 
 impl Default for AnalysisFilter {
@@ -71,6 +82,7 @@ impl Default for AnalysisFilter {
         AnalysisFilter {
             usage_likelihood_filter: vec![UsageLikelihoodStatus::High],
             sort_order: SortOrder::Ascending(OrderField::Token),
+            ignored_by_path: vec![],
         }
     }
 }
