@@ -4,6 +4,25 @@ use std::collections::{HashMap, HashSet};
 use token_search::TokenSearchResults;
 use yaml_rust::{Yaml, YamlLoader};
 
+const PATH_STARTS_WITH: &str = "path_starts_with";
+const PATH_ENDS_WITH: &str = "path_ends_with";
+const PATH_EQUALS: &str = "path_equals";
+const TOKEN_EQUALS: &str = "token_equals";
+const TOKEN_STARTS_WITH: &str = "token_starts_with";
+const TOKEN_ENDS_WITH: &str = "token_ends_with";
+const CLASS_OR_MODULE: &str = "class_or_module";
+const ALLOWED_TOKENS: &str = "allowed_tokens";
+const SUPPORTED_ASSERTIONS: [&'static str; 8] = [
+    PATH_STARTS_WITH,
+    PATH_ENDS_WITH,
+    PATH_EQUALS,
+    TOKEN_EQUALS,
+    TOKEN_STARTS_WITH,
+    TOKEN_ENDS_WITH,
+    CLASS_OR_MODULE,
+    ALLOWED_TOKENS,
+];
+
 pub struct ProjectConfigurations {
     configs: HashMap<String, ProjectConfiguration>,
 }
@@ -91,43 +110,25 @@ impl ProjectConfigurations {
     }
 
     fn parse_individual_matches_if(contents: &Yaml) -> Vec<Assertion> {
-        vec![
-            "path_starts_with",
-            "path_ends_with",
-            "path_equals",
-            "token_equals",
-            "token_starts_with",
-            "token_ends_with",
-            "allowed_tokens",
-            "class_or_module",
-        ]
-        .iter()
-        .map(|&k| match &contents[k] {
-            Yaml::String(v) => Self::parse_single_assertion(k, &v),
-            _ => None,
-        })
-        .filter_map(|a| a)
-        .collect()
+        SUPPORTED_ASSERTIONS
+            .iter()
+            .map(|&k| match &contents[k] {
+                Yaml::String(v) => Self::parse_single_assertion(k, &v),
+                _ => None,
+            })
+            .filter_map(|a| a)
+            .collect()
     }
 
     fn parse_low_likelihood_item(contents: &Yaml) -> Option<LowLikelihoodConfig> {
         match &contents["name"] {
             Yaml::String(name) => Some(LowLikelihoodConfig {
                 name: name.to_string(),
-                matchers: vec![
-                    "path_starts_with",
-                    "path_ends_with",
-                    "path_equals",
-                    "token_starts_with",
-                    "token_ends_with",
-                    "token_equals",
-                    "allowed_tokens",
-                    "class_or_module",
-                ]
-                .iter()
-                .map(|a| Self::parse_assertion_row(a, contents))
-                .filter_map(|a| a)
-                .collect(),
+                matchers: SUPPORTED_ASSERTIONS
+                    .iter()
+                    .map(|a| Self::parse_assertion_row(a, contents))
+                    .filter_map(|a| a)
+                    .collect(),
             }),
             _ => None,
         }
@@ -149,22 +150,22 @@ impl ProjectConfigurations {
 
     fn parse_single_assertion(key: &str, val: &str) -> Option<Assertion> {
         match key {
-            "path_starts_with" => Some(Assertion::PathAssertion(ValueMatcher::StartsWith(
+            PATH_STARTS_WITH => Some(Assertion::PathAssertion(ValueMatcher::StartsWith(
                 val.to_string(),
             ))),
-            "path_ends_with" => Some(Assertion::PathAssertion(ValueMatcher::EndsWith(
+            PATH_ENDS_WITH => Some(Assertion::PathAssertion(ValueMatcher::EndsWith(
                 val.to_string(),
             ))),
-            "path_equals" => Some(Assertion::PathAssertion(ValueMatcher::Equals(
+            PATH_EQUALS => Some(Assertion::PathAssertion(ValueMatcher::Equals(
                 val.to_string(),
             ))),
-            "token_starts_with" => Some(Assertion::TokenAssertion(ValueMatcher::StartsWith(
+            TOKEN_STARTS_WITH => Some(Assertion::TokenAssertion(ValueMatcher::StartsWith(
                 val.to_string(),
             ))),
-            "token_ends_with" => Some(Assertion::TokenAssertion(ValueMatcher::EndsWith(
+            TOKEN_ENDS_WITH => Some(Assertion::TokenAssertion(ValueMatcher::EndsWith(
                 val.to_string(),
             ))),
-            "token_equals" => Some(Assertion::TokenAssertion(ValueMatcher::Equals(
+            TOKEN_EQUALS => Some(Assertion::TokenAssertion(ValueMatcher::Equals(
                 val.to_string(),
             ))),
             _ => None,
@@ -173,7 +174,7 @@ impl ProjectConfigurations {
 
     fn parse_multiple_assertions(key: &str, val: Vec<String>) -> Option<Assertion> {
         match key {
-            "allowed_tokens" => {
+            ALLOWED_TOKENS => {
                 let values: HashSet<_> = val.iter().cloned().collect();
                 Some(Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(
                     values,
@@ -185,7 +186,7 @@ impl ProjectConfigurations {
 
     fn parse_boolean_assertion(key: &str, val: &bool) -> Option<Assertion> {
         match (key, val) {
-            ("class_or_module", true) => {
+            (CLASS_OR_MODULE, true) => {
                 Some(Assertion::TokenAssertion(ValueMatcher::StartsWithCapital))
             }
             _ => None,
