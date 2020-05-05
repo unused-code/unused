@@ -18,6 +18,28 @@ impl Assertion {
             Assertion::TokenAssertion(matcher) => matcher.check(&token_search_result.token.token),
         }
     }
+
+    pub fn matcher(&self) -> &ValueMatcher {
+        match self {
+            Assertion::PathAssertion(matcher) => matcher,
+            Assertion::TokenAssertion(matcher) => matcher,
+        }
+    }
+}
+
+#[derive(Debug, PartialEq)]
+pub enum AssertionConflict {
+    PathConflict(Vec<Assertion>),
+    TokenConflict(Vec<Assertion>),
+}
+
+impl AssertionConflict {
+    pub fn assertions(&self) -> &Vec<Assertion> {
+        match self {
+            AssertionConflict::PathConflict(assertions) => assertions,
+            AssertionConflict::TokenConflict(assertions) => assertions,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,6 +61,14 @@ impl ValueMatcher {
             ValueMatcher::Contains(v) => haystack.contains(v),
             ValueMatcher::ExactMatchOnAnyOf(vs) => vs.contains(haystack),
             ValueMatcher::StartsWithCapital => haystack.starts_with(|v: char| v.is_uppercase()),
+        }
+    }
+
+    pub fn full_equals(&self) -> bool {
+        match self {
+            ValueMatcher::Equals(_) => true,
+            ValueMatcher::ExactMatchOnAnyOf(_) => true,
+            _ => false,
         }
     }
 }

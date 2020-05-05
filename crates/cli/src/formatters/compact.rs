@@ -1,5 +1,4 @@
-use super::super::cli_configuration::CliConfiguration;
-use colored::*;
+use super::internal::{colored::*, configuration_warnings, CliConfiguration};
 use token_analysis::UsageLikelihoodStatus;
 
 pub fn format(cli_config: CliConfiguration) {
@@ -20,4 +19,6 @@ pub fn format(cli_config: CliConfiguration) {
             file_width = file_width
         );
     }
+
+    configuration_warnings(&cli_config.project_configuration);
 }

@@ -10,7 +10,7 @@ use token_search::{TokenSearchConfig, TokenSearchResults};
 pub struct CliConfiguration {
     token_search_config: TokenSearchConfig,
     analysis_filter: AnalysisFilter,
-    project_configuration: ProjectConfiguration,
+    pub project_configuration: ProjectConfiguration,
     outcome: TokenUsageResults,
 }
 

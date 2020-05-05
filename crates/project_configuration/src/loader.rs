@@ -48,6 +48,23 @@ impl ProjectConfigurations {
             .map(|(_, v)| v.clone())
     }
 
+    pub fn assertion_to_key(assertion: &Assertion) -> Option<&str> {
+        match assertion {
+            Assertion::TokenAssertion(ValueMatcher::StartsWith(_)) => Some(TOKEN_STARTS_WITH),
+            Assertion::TokenAssertion(ValueMatcher::EndsWith(_)) => Some(TOKEN_ENDS_WITH),
+            Assertion::TokenAssertion(ValueMatcher::Equals(_)) => Some(TOKEN_EQUALS),
+            Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => Some(ALLOWED_TOKENS),
+            Assertion::TokenAssertion(ValueMatcher::StartsWithCapital) => Some(CLASS_OR_MODULE),
+            Assertion::TokenAssertion(ValueMatcher::Contains(_)) => None,
+            Assertion::PathAssertion(ValueMatcher::StartsWith(_)) => Some(PATH_STARTS_WITH),
+            Assertion::PathAssertion(ValueMatcher::EndsWith(_)) => Some(PATH_ENDS_WITH),
+            Assertion::PathAssertion(ValueMatcher::Equals(_)) => Some(PATH_EQUALS),
+            Assertion::PathAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => None,
+            Assertion::PathAssertion(ValueMatcher::StartsWithCapital) => None,
+            Assertion::PathAssertion(ValueMatcher::Contains(_)) => None,
+        }
+    }
+
     fn parse_all_from_yaml(contents: &[Yaml]) -> HashMap<String, ProjectConfiguration> {
         match contents {
             [Yaml::Array(items)] => items.iter().filter(|i| !i["name"].is_badvalue()).fold(

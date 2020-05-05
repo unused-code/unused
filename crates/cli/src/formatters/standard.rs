@@ -1,6 +1,4 @@
-use super::super::cli_configuration::CliConfiguration;
-use super::super::flags::Flags;
-use colored::*;
+use super::internal::{colored::*, configuration_warnings, CliConfiguration, Flags};
 use std::collections::HashSet;
 use token_analysis::UsageLikelihoodStatus;
 
@@ -43,11 +41,13 @@ pub fn format(cmd: Flags, cli_config: CliConfiguration) {
     }
 
     if !cmd.no_summary {
-        usage_summary(tokens_list.len(), files_list.len(), cli_config);
+        usage_summary(tokens_list.len(), files_list.len(), &cli_config);
     }
+
+    configuration_warnings(&cli_config.project_configuration);
 }
 
-fn usage_summary(tokens_count: usize, files_count: usize, cli_config: CliConfiguration) {
+fn usage_summary(tokens_count: usize, files_count: usize, cli_config: &CliConfiguration) {
     println!("");
     println!("{}", "== UNUSED SUMMARY ==".white());
     println!("   Tokens found: {}", colorize_total(tokens_count));
