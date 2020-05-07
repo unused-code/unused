@@ -1,5 +1,7 @@
 # Unused
 
+![](https://github.com/unused-code/unused_rs/workflows/CI/badge.svg)
+
 Unused identifies possible dead code in dynamic programming languages.
 
 The first version of this was written in Haskell, available [here].
