@@ -1,5 +1,5 @@
 use super::usage_likelihood::UsageLikelihoodStatus;
-use project_configuration::Assertion;
+use project_configuration::{Assertion, ValueMatcher};
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
@@ -8,7 +8,7 @@ use token_search::TokenSearchResult;
 pub struct AnalysisFilter {
     pub usage_likelihood_filter: Vec<UsageLikelihoodStatus>,
     pub sort_order: SortOrder,
-    pub ignored_by_path: Vec<Assertion>,
+    ignored_by_path: Vec<Assertion>,
 }
 
 pub enum SortOrder {
@@ -66,6 +66,13 @@ impl AnalysisFilter {
             SortOrder::Ascending(field) => self.sort_order = SortOrder::Descending(field.clone()),
             _ => (),
         }
+    }
+
+    pub fn set_ignored(&mut self, substrings: Vec<String>) {
+        self.ignored_by_path = substrings
+            .into_iter()
+            .map(|s| Assertion::PathAssertion(ValueMatcher::Contains(s)))
+            .collect()
     }
 
     pub fn ignores_path(&self, result: &TokenSearchResult) -> bool {

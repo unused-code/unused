@@ -2,9 +2,7 @@ use super::analyzed_token::AnalyzedToken;
 use super::formatters;
 use super::{Flags, Format};
 use dirs;
-use project_configuration::{
-    Assertion, AssertionConflict, ProjectConfiguration, ProjectConfigurations, ValueMatcher,
-};
+use project_configuration::{AssertionConflict, ProjectConfiguration, ProjectConfigurations};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
@@ -179,12 +177,7 @@ fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
         analysis_filter.set_order_descending();
     }
 
-    analysis_filter.ignored_by_path = cmd
-        .ignore
-        .clone()
-        .into_iter()
-        .map(|s| Assertion::PathAssertion(ValueMatcher::Contains(s)))
-        .collect();
+    analysis_filter.set_ignored(cmd.ignore.clone());
 
     analysis_filter
 }
