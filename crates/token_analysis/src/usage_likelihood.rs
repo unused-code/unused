@@ -51,6 +51,16 @@ impl Display for UsageLikelihoodStatus {
     }
 }
 
+impl UsageLikelihoodStatus {
+    pub fn all() -> Vec<UsageLikelihoodStatus> {
+        vec![
+            UsageLikelihoodStatus::High,
+            UsageLikelihoodStatus::Medium,
+            UsageLikelihoodStatus::Low,
+        ]
+    }
+}
+
 impl UsageLikelihood {
     pub fn calculate(
         project_configuration: &ProjectConfiguration,

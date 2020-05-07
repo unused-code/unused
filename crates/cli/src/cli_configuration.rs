@@ -164,11 +164,7 @@ fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
     }
 
     if cmd.all_likelihoods {
-        analysis_filter.usage_likelihood_filter = vec![
-            UsageLikelihoodStatus::High,
-            UsageLikelihoodStatus::Medium,
-            UsageLikelihoodStatus::Low,
-        ];
+        analysis_filter.usage_likelihood_filter = UsageLikelihoodStatus::all();
     }
 
     analysis_filter.set_order_field(cmd.sort_order.clone());
