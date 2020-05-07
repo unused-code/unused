@@ -20,5 +20,5 @@ pub fn format(cli_config: CliConfiguration) {
         );
     }
 
-    configuration_warnings(&cli_config.project_configuration);
+    configuration_warnings(&cli_config);
 }

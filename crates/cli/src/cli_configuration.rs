@@ -1,6 +1,7 @@
 use super::analyzed_token::AnalyzedToken;
 use dirs;
-use project_configuration::{ProjectConfiguration, ProjectConfigurations};
+use project_configuration::{AssertionConflict, ProjectConfiguration, ProjectConfigurations};
+use std::collections::HashMap;
 use std::fs;
 use std::io;
 use std::path::Path;
@@ -10,7 +11,7 @@ use token_search::{TokenSearchConfig, TokenSearchResults};
 pub struct CliConfiguration {
     token_search_config: TokenSearchConfig,
     analysis_filter: AnalysisFilter,
-    pub project_configuration: ProjectConfiguration,
+    project_configuration: ProjectConfiguration,
     outcome: TokenUsageResults,
 }
 
@@ -80,6 +81,20 @@ impl CliConfiguration {
 
     pub fn configuration_name(&self) -> String {
         self.project_configuration.name.to_string()
+    }
+
+    pub fn low_likelihood_conflicts(&self) -> HashMap<String, Vec<AssertionConflict>> {
+        let mut conflict_results = HashMap::new();
+
+        for ll in self.project_configuration.low_likelihood.iter() {
+            let conflicts = ll.conflicts();
+
+            if conflicts.len() > 0 {
+                conflict_results.insert(ll.name.to_string(), conflicts);
+            }
+        }
+
+        conflict_results
     }
 }
 

@@ -44,7 +44,7 @@ pub fn format(cmd: Flags, cli_config: CliConfiguration) {
         usage_summary(tokens_list.len(), files_list.len(), &cli_config);
     }
 
-    configuration_warnings(&cli_config.project_configuration);
+    configuration_warnings(&cli_config);
 }
 
 fn usage_summary(tokens_count: usize, files_count: usize, cli_config: &CliConfiguration) {
