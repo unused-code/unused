@@ -1,14 +1,22 @@
 use super::analyzed_token::AnalyzedToken;
+use super::formatters;
+use super::{Flags, Format};
 use dirs;
-use project_configuration::{AssertionConflict, ProjectConfiguration, ProjectConfigurations};
-use std::collections::HashMap;
+use project_configuration::{
+    Assertion, AssertionConflict, ProjectConfiguration, ProjectConfigurations, ValueMatcher,
+};
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
+use std::iter::FromIterator;
 use std::path::Path;
-use token_analysis::{AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults};
-use token_search::{TokenSearchConfig, TokenSearchResults};
+use token_analysis::{
+    AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults, UsageLikelihoodStatus,
+};
+use token_search::{LanguageRestriction, Token, TokenSearchConfig, TokenSearchResults};
 
 pub struct CliConfiguration {
+    flags: Flags,
     token_search_config: TokenSearchConfig,
     analysis_filter: AnalysisFilter,
     project_configuration: ProjectConfiguration,
@@ -16,7 +24,9 @@ pub struct CliConfiguration {
 }
 
 impl CliConfiguration {
-    pub fn new(token_search_config: TokenSearchConfig, analysis_filter: AnalysisFilter) -> Self {
+    pub fn new(flags: Flags, tokens: &[Token]) -> Self {
+        let token_search_config = build_token_search_config(&flags, tokens);
+        let analysis_filter = build_analysis_filter(&flags);
         let results = TokenSearchResults::generate_with_config(&token_search_config);
         let project_configuration =
             calculate_config_by_results(&results).unwrap_or(ProjectConfiguration::default());
@@ -24,11 +34,24 @@ impl CliConfiguration {
             TokenUsageResults::calculate(&token_search_config, results, &project_configuration);
 
         Self {
+            flags,
             token_search_config,
             analysis_filter,
             project_configuration,
             outcome,
         }
+    }
+
+    pub fn render(&self) {
+        match self.flags.format {
+            Format::Json => formatters::json::format(self),
+            Format::Standard => formatters::standard::format(self),
+            Format::Compact => formatters::compact::format(self),
+        }
+    }
+
+    pub fn display_summary(&self) -> bool {
+        !self.flags.no_summary
     }
 
     pub fn sort_order(&self) -> &SortOrder {
@@ -98,22 +121,77 @@ impl CliConfiguration {
     }
 }
 
+fn file_path_in_home_dir(file_name: &str) -> Option<String> {
+    dirs::home_dir().and_then(|ref p| Path::new(p).join(file_name).to_str().map(|v| v.to_owned()))
+}
+
 fn calculate_config_by_results(results: &TokenSearchResults) -> Option<ProjectConfiguration> {
-    let config_path: Option<String> = dirs::home_dir().and_then(|ref p| {
-        let final_path = Path::new(p).join(".unused.yml");
-        final_path.to_str().map(|v| v.to_owned())
-    });
-    match config_path {
-        Some(path) => match read_file(&path) {
-            Ok(contents) => ProjectConfigurations::load(&contents).best_match(results),
-            _ => None,
-        },
-        None => None,
-    }
+    file_path_in_home_dir(".unused.yml")
+        .and_then(|path| read_file(&path).ok())
+        .and_then(|contents| ProjectConfigurations::load(&contents).best_match(results))
 }
 
 fn read_file(filename: &str) -> Result<String, io::Error> {
     let contents = fs::read_to_string(filename)?;
 
     Ok(contents)
+}
+
+fn build_token_search_config(cmd: &Flags, token_results: &[Token]) -> TokenSearchConfig {
+    let mut search_config = TokenSearchConfig::default();
+    search_config.tokens = token_results.to_vec();
+
+    if cmd.no_progress {
+        search_config.display_progress = false;
+    }
+
+    if !cmd.only_filetypes.is_empty() {
+        search_config.language_restriction =
+            LanguageRestriction::Only(to_hash_set(&cmd.only_filetypes));
+    }
+
+    if !cmd.except_filetypes.is_empty() {
+        search_config.language_restriction =
+            LanguageRestriction::Except(to_hash_set(&cmd.except_filetypes));
+    }
+
+    search_config
+}
+
+fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
+    let mut analysis_filter = AnalysisFilter::default();
+
+    if !cmd.likelihoods.is_empty() {
+        analysis_filter.usage_likelihood_filter = cmd.likelihoods.clone();
+    }
+
+    if cmd.all_likelihoods {
+        analysis_filter.usage_likelihood_filter = vec![
+            UsageLikelihoodStatus::High,
+            UsageLikelihoodStatus::Medium,
+            UsageLikelihoodStatus::Low,
+        ];
+    }
+
+    analysis_filter.set_order_field(cmd.sort_order.clone());
+
+    if cmd.reverse {
+        analysis_filter.set_order_descending();
+    }
+
+    analysis_filter.ignored_by_path = cmd
+        .ignore
+        .clone()
+        .into_iter()
+        .map(|s| Assertion::PathAssertion(ValueMatcher::Contains(s)))
+        .collect();
+
+    analysis_filter
+}
+
+fn to_hash_set<T>(input: &[T]) -> HashSet<T>
+where
+    T: std::hash::Hash + Eq + std::clone::Clone,
+{
+    HashSet::from_iter(input.iter().cloned())
 }

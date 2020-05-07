@@ -1,4 +1,4 @@
 pub mod compact;
-pub mod internal;
+mod internal;
 pub mod json;
 pub mod standard;

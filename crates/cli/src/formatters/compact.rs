@@ -1,7 +1,7 @@
 use super::internal::{colored::*, configuration_warnings, CliConfiguration};
 use token_analysis::UsageLikelihoodStatus;
 
-pub fn format(cli_config: CliConfiguration) {
+pub fn format(cli_config: &CliConfiguration) {
     let token_width = cli_config.max_token_length() + 3;
     let file_width = cli_config.max_file_length() + 3;
     for analysis in cli_config.analyses() {
@@ -20,5 +20,5 @@ pub fn format(cli_config: CliConfiguration) {
         );
     }
 
-    configuration_warnings(&cli_config);
+    configuration_warnings(cli_config);
 }
