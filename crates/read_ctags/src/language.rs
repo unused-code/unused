@@ -13,6 +13,7 @@ pub enum Language {
     JSON,
     JavaScript,
     Markdown,
+    Python,
     Ruby,
     Rust,
     SCSS,
@@ -32,6 +33,7 @@ impl std::fmt::Display for Language {
             Language::JSON => write!(f, "JSON"),
             Language::JavaScript => write!(f, "JavaScript"),
             Language::Markdown => write!(f, "Markdown"),
+            Language::Python => write!(f, "Python"),
             Language::Ruby => write!(f, "Ruby"),
             Language::Rust => write!(f, "Rust"),
             Language::SCSS => write!(f, "SCSS"),
@@ -55,8 +57,8 @@ impl Language {
     /// All file extensions supported
     pub fn extensions() -> Vec<&'static str> {
         vec![
-            "css", "ex", "exs", "elm", "html", "json", "js", "jsx", "md", "rb", "rs", "scss", "sh",
-            "svg", "ts", "tsx", "xml",
+            "css", "ex", "exs", "elm", "html", "json", "js", "jsx", "md", "py", "rb", "rs", "scss",
+            "sh", "svg", "ts", "tsx", "xml",
         ]
     }
 }
@@ -75,6 +77,7 @@ impl FromStr for Language {
             "js" => Ok(Language::JavaScript),
             "jsx" => Ok(Language::JavaScript),
             "md" => Ok(Language::Markdown),
+            "py" => Ok(Language::Python),
             "rb" => Ok(Language::Ruby),
             "rs" => Ok(Language::Rust),
             "scss" => Ok(Language::SCSS),
