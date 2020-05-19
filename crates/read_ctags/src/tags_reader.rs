@@ -6,11 +6,12 @@ use std::fmt::{Display, Formatter};
 use std::fs;
 use std::io;
 use std::io::Error;
+use std::path::PathBuf;
 
 /// TagsReader provides a mechanism for attempting to read multiple ctags files until the first is
 /// found
-pub struct TagsReader<'a> {
-    filenames: Vec<&'a str>,
+pub struct TagsReader {
+    filenames: Vec<PathBuf>,
 }
 
 /// A struct capturing possible failures when attempting to find and read tags files
@@ -18,7 +19,7 @@ pub enum ReadCtagsError {
     /// No tags file found
     ///
     /// This provides the paths attempted
-    NoCtagsFile(Vec<String>, io::Error),
+    NoCtagsFile(Vec<PathBuf>, io::Error),
     /// Error parsing tags
     CtagsParseError(CtagsParseError),
 }
@@ -35,7 +36,11 @@ impl Display for ReadCtagsError {
             ReadCtagsError::NoCtagsFile(ref file_list, ref err) => write!(
                 f,
                 "Unable to find ctags file (searched in {}): {}",
-                file_list.join(", "),
+                file_list
+                    .iter()
+                    .filter_map(|f| f.to_str())
+                    .collect::<Vec<_>>()
+                    .join(", "),
                 err
             ),
             ReadCtagsError::CtagsParseError(ref err) => write!(f, "{}", err),
@@ -43,15 +48,19 @@ impl Display for ReadCtagsError {
     }
 }
 
-impl<'a> Default for TagsReader<'a> {
+impl Default for TagsReader {
     fn default() -> Self {
         TagsReader {
-            filenames: vec![".git/tags", "tags", "tmp/tags"],
+            filenames: vec![
+                PathBuf::from(".git/tags"),
+                PathBuf::from("tags"),
+                PathBuf::from("tmp/tags"),
+            ],
         }
     }
 }
 
-impl<'a> TagsReader<'a> {
+impl TagsReader {
     /// Loads and parses the first tags file it finds
     pub fn load(&self) -> Result<HashSet<CtagItem>, ReadCtagsError> {
         self.read()
@@ -62,31 +71,23 @@ impl<'a> TagsReader<'a> {
         Self::first_success(
             &self.filenames,
             Error::new(io::ErrorKind::Other, "No file provided"),
-            Self::run,
+            fs::read_to_string,
         )
-        .map_err(|e| {
-            ReadCtagsError::NoCtagsFile(self.filenames.iter().map(|f| f.to_string()).collect(), e)
-        })
+        .map_err(|e| ReadCtagsError::NoCtagsFile(self.filenames.clone(), e))
     }
 
     fn first_success<A, B, C, F>(values: &[A], default: C, f: F) -> Result<B, C>
     where
-        A: Copy,
+        A: Clone,
         F: Fn(A) -> Result<B, C>,
     {
         let mut outcome = Err(default);
-        for &x in values.iter() {
-            outcome = f(x);
+        for x in values.iter() {
+            outcome = f(x.clone());
             if outcome.is_ok() {
                 break;
             }
         }
         outcome
-    }
-
-    fn run(filename: &str) -> Result<String, io::Error> {
-        let contents = fs::read_to_string(filename)?;
-
-        Ok(contents)
     }
 }
