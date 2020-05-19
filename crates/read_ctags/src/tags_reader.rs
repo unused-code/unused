@@ -1,6 +1,6 @@
-use super::CtagItem;
-use nom;
+use super::{CtagItem, CtagsParseError};
 use std::collections::HashSet;
+use std::convert::From;
 use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::fs;
@@ -18,26 +18,27 @@ pub enum ReadCtagsError {
     /// No tags file found
     ///
     /// This provides the paths attempted
-    NoCtagsFile((Vec<String>, io::Error)),
-    /// Incomplete parse; parsing was successful but didn't consume all input
-    IncompleteParse,
-    /// Parsing failed
-    FailedParse(nom::Err<(String, nom::error::ErrorKind)>),
+    NoCtagsFile(Vec<String>, io::Error),
+    /// Error parsing tags
+    CtagsParseError(CtagsParseError),
+}
+
+impl From<CtagsParseError> for ReadCtagsError {
+    fn from(err: CtagsParseError) -> Self {
+        ReadCtagsError::CtagsParseError(err)
+    }
 }
 
 impl Display for ReadCtagsError {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match *self {
-            ReadCtagsError::NoCtagsFile((ref file_list, ref err)) => write!(
+            ReadCtagsError::NoCtagsFile(ref file_list, ref err) => write!(
                 f,
                 "Unable to find ctags file (searched in {}): {}",
                 file_list.join(", "),
                 err
             ),
-            ReadCtagsError::IncompleteParse => write!(f, "Unable to parse ctags file fully"),
-            ReadCtagsError::FailedParse(ref err) => {
-                write!(f, "Failed to parse ctags file: {}", err)
-            }
+            ReadCtagsError::CtagsParseError(ref err) => write!(f, "{}", err),
         }
     }
 }
@@ -53,25 +54,19 @@ impl<'a> Default for TagsReader<'a> {
 impl<'a> TagsReader<'a> {
     /// Loads and parses the first tags file it finds
     pub fn load(&self) -> Result<HashSet<CtagItem>, ReadCtagsError> {
-        match self.read() {
-            Ok(contents) => match CtagItem::parse(&contents) {
-                Ok(("", outcome)) => Ok(outcome),
-                Ok(_) => Err(ReadCtagsError::IncompleteParse),
-                Err(e) => Err(ReadCtagsError::FailedParse(
-                    e.map(|(v1, v2)| (v1.to_string(), v2)),
-                )),
-            },
-            Err(e) => Err(ReadCtagsError::NoCtagsFile(e)),
-        }
+        self.read()
+            .and_then(|contents| CtagItem::parse(&contents).map_err(|e| e.into()))
     }
 
-    fn read(&self) -> Result<String, (Vec<String>, io::Error)> {
+    fn read(&self) -> Result<String, ReadCtagsError> {
         Self::first_success(
             &self.filenames,
             Error::new(io::ErrorKind::Other, "No file provided"),
             Self::run,
         )
-        .map_err(|e| (self.filenames.iter().map(|f| f.to_string()).collect(), e))
+        .map_err(|e| {
+            ReadCtagsError::NoCtagsFile(self.filenames.iter().map(|f| f.to_string()).collect(), e)
+        })
     }
 
     fn first_success<A, B, C, F>(values: &[A], default: C, f: F) -> Result<B, C>
