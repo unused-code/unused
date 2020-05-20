@@ -22,7 +22,7 @@ pub fn run() {
     }
 
     match Token::all() {
-        Ok(results) => CliConfiguration::new(flags, &results).render(),
+        Ok((_, results)) => CliConfiguration::new(flags, &results).render(),
         Err(e) => error_message::failed_token_parse(e),
     }
 }

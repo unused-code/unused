@@ -14,7 +14,7 @@
 //! use read_ctags::TagsReader;
 //! use serde_json;
 //! match TagsReader::default().load() {
-//!   Ok(outcome) => println!("{}", serde_json::to_string(&outcome).unwrap()),
+//!   Ok(outcome) => println!("{}", serde_json::to_string(&outcome.ctag_items).unwrap()),
 //!   Err(e) => eprintln!("{}", e),
 //! }
 //! ```

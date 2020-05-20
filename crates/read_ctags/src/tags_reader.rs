@@ -16,6 +16,14 @@ pub struct TagsReader {
     filenames: Vec<PathBuf>,
 }
 
+/// Outcome from loading tags via TagsReader
+pub struct TagsReaderResponse {
+    /// Path to the tags file loaded
+    pub ctags_path: PathBuf,
+    /// Set of CtagItems returned
+    pub ctag_items: HashSet<CtagItem>,
+}
+
 /// A struct capturing possible failures when attempting to find and read tags files
 pub enum ReadCtagsError {
     /// No tags file found
@@ -97,12 +105,18 @@ impl Default for TagsReader {
 
 impl TagsReader {
     /// Loads and parses the first tags file it finds
-    pub fn load(&self) -> Result<HashSet<CtagItem>, ReadCtagsError> {
-        self.read()
-            .and_then(|contents| CtagItem::parse(&contents).map_err(|e| e.into()))
+    pub fn load(&self) -> Result<TagsReaderResponse, ReadCtagsError> {
+        self.read().and_then(|(ctags_path, contents)| {
+            CtagItem::parse(&contents)
+                .map(|ctag_items| TagsReaderResponse {
+                    ctags_path,
+                    ctag_items,
+                })
+                .map_err(|e| e.into())
+        })
     }
 
-    fn read(&self) -> Result<String, ReadCtagsError> {
+    fn read(&self) -> Result<(PathBuf, String), ReadCtagsError> {
         Self::first_success(
             &self.filenames,
             Error::new(io::ErrorKind::Other, "No file provided"),
@@ -111,14 +125,14 @@ impl TagsReader {
         .map_err(|e| ReadCtagsError::NoCtagsFile(self.filenames.clone(), e))
     }
 
-    fn first_success<A, B, C, F>(values: &[A], default: C, f: F) -> Result<B, C>
+    fn first_success<A, B, C, F>(values: &[A], default: C, f: F) -> Result<(A, B), C>
     where
         A: Clone,
         F: Fn(A) -> Result<B, C>,
     {
         let mut outcome = Err(default);
         for x in values.iter() {
-            outcome = f(x.clone());
+            outcome = f(x.clone()).map(|v| (x.clone(), v));
             if outcome.is_ok() {
                 break;
             }

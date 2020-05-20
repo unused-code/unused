@@ -2,6 +2,7 @@ use itertools::Itertools;
 use read_ctags::{CtagItem, Language, ReadCtagsError, TagsReader};
 use serde::Serialize;
 use std::collections::HashSet;
+use std::path::PathBuf;
 
 /// A token based on a set of `CtagItem`s
 #[derive(Clone, Serialize)]
@@ -31,10 +32,13 @@ impl Token {
     }
 
     /// Load tokens after reading tags
-    pub fn all() -> Result<Vec<Token>, ReadCtagsError> {
-        TagsReader::default()
-            .load()
-            .map(Self::build_tokens_from_outcome)
+    pub fn all() -> Result<(PathBuf, Vec<Token>), ReadCtagsError> {
+        TagsReader::default().load().map(|res| {
+            (
+                res.ctags_path,
+                Self::build_tokens_from_outcome(res.ctag_items),
+            )
+        })
     }
 
     /// Provide the first path in the list of defined paths
