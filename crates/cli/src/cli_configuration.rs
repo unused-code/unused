@@ -1,13 +1,10 @@
 use super::analyzed_token::AnalyzedToken;
 use super::formatters;
+use super::project_configurations_loader::load_and_parse_config;
 use super::{Flags, Format};
-use dirs;
-use project_configuration::{AssertionConflict, ProjectConfiguration, ProjectConfigurations};
+use project_configuration::{AssertionConflict, ProjectConfiguration};
 use std::collections::{HashMap, HashSet};
-use std::fs;
-use std::io;
 use std::iter::FromIterator;
-use std::path::Path;
 use token_analysis::{
     AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults, UsageLikelihoodStatus,
 };
@@ -118,23 +115,6 @@ impl CliConfiguration {
 
         conflict_results
     }
-}
-
-fn file_path_in_home_dir(file_name: &str) -> Option<String> {
-    dirs::home_dir().and_then(|ref p| Path::new(p).join(file_name).to_str().map(|v| v.to_owned()))
-}
-
-fn load_and_parse_config() -> ProjectConfigurations {
-    let contents = file_path_in_home_dir(".config/unused/unused.yml")
-        .and_then(|path| read_file(&path).ok())
-        .unwrap_or(ProjectConfigurations::default_yaml());
-    ProjectConfigurations::parse(&contents)
-}
-
-fn read_file(filename: &str) -> Result<String, io::Error> {
-    let contents = fs::read_to_string(filename)?;
-
-    Ok(contents)
 }
 
 fn build_token_search_config(cmd: &Flags, token_results: &[Token]) -> TokenSearchConfig {

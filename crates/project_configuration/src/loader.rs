@@ -45,6 +45,10 @@ impl ProjectConfigurations {
         ProjectConfigurations { configs }
     }
 
+    pub fn project_config_names(&self) -> Vec<String> {
+        self.configs.keys().map(|v| v.to_owned()).collect()
+    }
+
     pub fn best_match(&self, results: &TokenSearchResults) -> Option<ProjectConfiguration> {
         self.configs
             .iter()

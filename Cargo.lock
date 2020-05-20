@@ -104,6 +104,7 @@ dependencies = [
 name = "cli"
 version = "0.1.0"
 dependencies = [
+ "codebase_files",
  "colored",
  "dirs",
  "itertools",

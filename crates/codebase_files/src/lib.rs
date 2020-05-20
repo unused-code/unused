@@ -1,7 +1,8 @@
+use std::path::PathBuf;
 use std::process::{Command, Output};
 
 pub struct CodebaseFiles {
-    pub paths: Vec<String>,
+    pub paths: Vec<PathBuf>,
 }
 
 impl CodebaseFiles {
@@ -18,7 +19,9 @@ impl CodebaseFiles {
 
         paths.sort();
         paths.dedup();
-        CodebaseFiles { paths }
+        CodebaseFiles {
+            paths: paths.into_iter().map(PathBuf::from).collect(),
+        }
     }
 
     fn process_ls_files<T>(output: Result<Output, T>) -> Vec<String> {

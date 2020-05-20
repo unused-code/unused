@@ -13,6 +13,7 @@ use std::convert::TryInto;
 use std::fs;
 use std::io;
 use std::iter::FromIterator;
+use std::path::PathBuf;
 
 /// A TokenSearchConfig is necessary to construct the list of tokens and files to search against
 /// when generating results.
@@ -25,7 +26,7 @@ pub struct TokenSearchConfig {
     /// Tokens to be used when searching
     pub tokens: Vec<Token>,
     /// Filenames to search against
-    pub files: Vec<String>,
+    pub files: Vec<PathBuf>,
     /// Should a progress bar be displayed?
     pub display_progress: bool,
     /// Restrict languages searched (based on file extension)
@@ -181,7 +182,9 @@ impl TokenSearchResults {
                 {
                     let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
 
-                    file_with_occurrences.insert(f.to_string(), res);
+                    if let Some(fp) = f.to_str() {
+                        file_with_occurrences.insert(fp.to_string(), res);
+                    }
                 }
 
                 results
@@ -207,10 +210,10 @@ impl TokenSearchResults {
         TokenSearchResults(final_results)
     }
 
-    fn load_all_files(filenames: &[String]) -> HashMap<&str, String> {
+    fn load_all_files(filenames: &[PathBuf]) -> HashMap<&PathBuf, String> {
         filenames
             .par_iter()
-            .fold(HashMap::new, |mut acc: HashMap<&str, String>, f| {
+            .fold(HashMap::new, |mut acc: HashMap<&PathBuf, String>, f| {
                 if let Ok(contents) = Self::read_file(&f) {
                     acc.insert(&f, contents);
                 }
@@ -225,7 +228,7 @@ impl TokenSearchResults {
             })
     }
 
-    fn read_file(filename: &str) -> Result<String, io::Error> {
+    fn read_file(filename: &PathBuf) -> Result<String, io::Error> {
         let contents = fs::read_to_string(filename)?;
 
         Ok(contents)

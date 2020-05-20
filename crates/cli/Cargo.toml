@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 serde_json = "1.0.50"
+codebase_files = { path = "../../crates/codebase_files/" }
 read_ctags = { path = "../../crates/read_ctags/" }
 token_search = { path = "../../crates/token_search/" }
 token_analysis = { path = "../../crates/token_analysis/" }

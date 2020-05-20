@@ -4,6 +4,12 @@ use structopt::StructOpt;
 use token_analysis::{OrderField, UsageLikelihoodStatus};
 
 #[derive(Debug, StructOpt)]
+pub enum Command {
+    /// Run diagnostics to identify any potential issues running unused
+    Doctor,
+}
+
+#[derive(Debug, StructOpt)]
 #[structopt(
     name = "unused-rs",
     about = "A command line tool to identify potentially unused code",
@@ -61,6 +67,9 @@ pub struct Flags {
     /// This supports providing multiple values with a comma-delimited list
     #[structopt(long, use_delimiter = true)]
     pub ignore: Vec<String>,
+
+    #[structopt(subcommand)]
+    pub cmd: Option<Command>,
 }
 
 #[derive(Debug)]
