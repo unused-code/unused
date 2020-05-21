@@ -1,6 +1,7 @@
 mod internal;
 use super::ctag_item::CtagItem;
 use super::language::Language;
+use super::tag_program::TagProgram;
 use super::token_kind::TokenKind;
 use nom::{
     branch::alt,
@@ -20,8 +21,16 @@ enum ParsedField<'a> {
     ParsedField(&'a str, &'a str),
 }
 
-pub fn parse(input: &str) -> IResult<&str, HashSet<CtagItem>> {
-    let (input, _) = opt(internal::tag_metadata)(input)?;
+pub fn parse(input: &str) -> IResult<&str, (TagProgram, HashSet<CtagItem>)> {
+    tuple((
+        map(opt(internal::tag_metadata), |v| {
+            v.unwrap_or(TagProgram::default())
+        }),
+        tags_body,
+    ))(input)
+}
+
+fn tags_body(input: &str) -> IResult<&str, HashSet<CtagItem>> {
     terminated(
         map(separated_list(tag("\n"), ctag_item_parser), |res| {
             res.iter().cloned().collect()
@@ -139,9 +148,12 @@ fn parses_without_metadata() {
 
     assert_eq!(
         parse("withInfo\tpath/to/file.rb\t45"),
-        Ok(("", result.clone()))
+        Ok(("", (TagProgram::default(), result.clone())))
     );
-    assert_eq!(parse("withInfo\tpath/to/file.rb\t45\n"), Ok(("", result)));
+    assert_eq!(
+        parse("withInfo\tpath/to/file.rb\t45\n"),
+        Ok(("", (TagProgram::default(), result)))
+    );
 }
 
 #[test]
@@ -176,27 +188,30 @@ fn parses_multiple_lines() {
         parse("!_TAG_INFO\nfirst\tpath/to/file.rb\t1\nsecond\tpath/to/file.rb\t2;\"\tc\n"),
         Ok((
             "",
-            vec![
-                CtagItem {
-                    name: String::from("first"),
-                    file_path: String::from("path/to/file.rb"),
-                    address: String::from("1"),
-                    language: Some(Language::Ruby),
-                    tags: BTreeMap::new(),
-                    kind: TokenKind::Undefined
-                },
-                CtagItem {
-                    name: String::from("second"),
-                    file_path: String::from("path/to/file.rb"),
-                    address: String::from("2"),
-                    language: Some(Language::Ruby),
-                    tags: BTreeMap::new(),
-                    kind: TokenKind::Class
-                }
-            ]
-            .iter()
-            .cloned()
-            .collect()
+            (
+                TagProgram::default(),
+                vec![
+                    CtagItem {
+                        name: String::from("first"),
+                        file_path: String::from("path/to/file.rb"),
+                        address: String::from("1"),
+                        language: Some(Language::Ruby),
+                        tags: BTreeMap::new(),
+                        kind: TokenKind::Undefined
+                    },
+                    CtagItem {
+                        name: String::from("second"),
+                        file_path: String::from("path/to/file.rb"),
+                        address: String::from("2"),
+                        language: Some(Language::Ruby),
+                        tags: BTreeMap::new(),
+                        kind: TokenKind::Class
+                    }
+                ]
+                .iter()
+                .cloned()
+                .collect()
+            )
         ))
     );
 }

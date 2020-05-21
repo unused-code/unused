@@ -1,9 +1,11 @@
 use super::language::Language;
 use super::parser;
+use super::tags_file::TagsFile;
 use super::token_kind::TokenKind;
 use serde::Serialize;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 use std::fmt::{Display, Formatter};
+use std::path::PathBuf;
 
 /// Represents a single entry in a tags file
 #[derive(Clone, Hash, Debug, Eq, Serialize, PartialEq)]
@@ -53,9 +55,13 @@ impl Display for CtagsParseError {
 
 impl CtagItem {
     /// Parse tags generatd by Universal Ctags to generate `CtagItem`s
-    pub fn parse(input: &str) -> Result<HashSet<CtagItem>, CtagsParseError> {
+    pub fn parse(path: PathBuf, input: &str) -> Result<TagsFile, CtagsParseError> {
         match parser::parse(input) {
-            Ok(("", outcome)) => Ok(outcome),
+            Ok(("", (program, tags))) => Ok(TagsFile {
+                path,
+                program,
+                tags,
+            }),
             Ok(_) => Err(CtagsParseError::IncompleteParse),
             Err(e) => Err(CtagsParseError::FailedParse(
                 e.map(|(v1, v2)| (v1.to_string(), v2)),

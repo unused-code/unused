@@ -33,10 +33,10 @@ impl Token {
 
     /// Load tokens after reading tags
     pub fn all() -> Result<(PathBuf, Vec<Token>), ReadCtagsError> {
-        TagsReader::default().load().map(|res| {
+        TagsReader::default().load().map(|tags_file| {
             (
-                res.ctags_path,
-                Self::build_tokens_from_outcome(res.ctag_items),
+                tags_file.path,
+                Self::build_tokens_from_outcome(tags_file.tags),
             )
         })
     }

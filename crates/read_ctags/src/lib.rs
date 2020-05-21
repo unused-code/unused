@@ -14,7 +14,7 @@
 //! use read_ctags::TagsReader;
 //! use serde_json;
 //! match TagsReader::default().load() {
-//!   Ok(outcome) => println!("{}", serde_json::to_string(&outcome.ctag_items).unwrap()),
+//!   Ok(outcome) => println!("{}", serde_json::to_string(&outcome.tags).unwrap()),
 //!   Err(e) => eprintln!("{}", e),
 //! }
 //! ```
@@ -22,10 +22,13 @@
 mod ctag_item;
 mod language;
 mod parser;
+mod tag_program;
+mod tags_file;
 mod tags_reader;
 mod token_kind;
 
 pub use self::ctag_item::*;
 pub use self::language::*;
+pub use self::tags_file::*;
 pub use self::tags_reader::*;
 pub use self::token_kind::*;

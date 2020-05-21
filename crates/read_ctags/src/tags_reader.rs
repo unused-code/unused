@@ -1,5 +1,4 @@
-use super::{CtagItem, CtagsParseError};
-use std::collections::HashSet;
+use super::{CtagItem, CtagsParseError, TagsFile};
 use std::convert::From;
 use std::default::Default;
 use std::env::current_dir;
@@ -14,14 +13,6 @@ use std::process::Command;
 /// found
 pub struct TagsReader {
     filenames: Vec<PathBuf>,
-}
-
-/// Outcome from loading tags via TagsReader
-pub struct TagsReaderResponse {
-    /// Path to the tags file loaded
-    pub ctags_path: PathBuf,
-    /// Set of CtagItems returned
-    pub ctag_items: HashSet<CtagItem>,
 }
 
 /// A struct capturing possible failures when attempting to find and read tags files
@@ -105,14 +96,9 @@ impl Default for TagsReader {
 
 impl TagsReader {
     /// Loads and parses the first tags file it finds
-    pub fn load(&self) -> Result<TagsReaderResponse, ReadCtagsError> {
+    pub fn load(&self) -> Result<TagsFile, ReadCtagsError> {
         self.read().and_then(|(ctags_path, contents)| {
-            CtagItem::parse(&contents)
-                .map(|ctag_items| TagsReaderResponse {
-                    ctags_path,
-                    ctag_items,
-                })
-                .map_err(|e| e.into())
+            CtagItem::parse(ctags_path, &contents).map_err(|e| e.into())
         })
     }
 
