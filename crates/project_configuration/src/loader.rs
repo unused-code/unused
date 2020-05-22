@@ -1,4 +1,4 @@
-use super::config::*;
+use super::project_configuration::*;
 use super::value_assertion::{Assertion, ValueMatcher};
 use std::collections::{HashMap, HashSet};
 use token_search::TokenSearchResults;
