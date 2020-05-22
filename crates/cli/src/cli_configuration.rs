@@ -26,8 +26,9 @@ impl CliConfiguration {
         let token_search_config = build_token_search_config(&flags, tokens);
         let analysis_filter = build_analysis_filter(&flags);
         let results = TokenSearchResults::generate_with_config(&token_search_config);
-        let project_configuration =
-            calculate_config_by_results(&results).unwrap_or(ProjectConfiguration::default());
+        let project_configuration = load_and_parse_config()
+            .best_match(&results)
+            .unwrap_or(ProjectConfiguration::default());
         let outcome =
             TokenUsageResults::calculate(&token_search_config, results, &project_configuration);
 
@@ -123,10 +124,11 @@ fn file_path_in_home_dir(file_name: &str) -> Option<String> {
     dirs::home_dir().and_then(|ref p| Path::new(p).join(file_name).to_str().map(|v| v.to_owned()))
 }
 
-fn calculate_config_by_results(results: &TokenSearchResults) -> Option<ProjectConfiguration> {
-    file_path_in_home_dir(".unused.yml")
+fn load_and_parse_config() -> ProjectConfigurations {
+    let contents = file_path_in_home_dir(".config/unused/unused.yml")
         .and_then(|path| read_file(&path).ok())
-        .and_then(|contents| ProjectConfigurations::load(&contents).best_match(results))
+        .unwrap_or(ProjectConfigurations::default_yaml());
+    ProjectConfigurations::parse(&contents)
 }
 
 fn read_file(filename: &str) -> Result<String, io::Error> {

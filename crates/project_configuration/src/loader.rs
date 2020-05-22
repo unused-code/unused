@@ -1,6 +1,7 @@
 use super::project_configuration::*;
 use super::value_assertion::{Assertion, ValueMatcher};
 use std::collections::{HashMap, HashSet};
+use std::include_str;
 use token_search::TokenSearchResults;
 use yaml_rust::{Yaml, YamlLoader};
 
@@ -28,11 +29,15 @@ pub struct ProjectConfigurations {
 }
 
 impl ProjectConfigurations {
+    pub fn default_yaml() -> String {
+        include_str!("default_config.yml").to_string()
+    }
+
     pub fn get(&self, name: &str) -> Option<ProjectConfiguration> {
         self.configs.get(name).map(|v| v.clone())
     }
 
-    pub fn load(contents: &str) -> Self {
+    pub fn parse(contents: &str) -> Self {
         let configs = match YamlLoader::load_from_str(contents) {
             Ok(results) => Self::parse_all_from_yaml(&results),
             _ => HashMap::new(),
@@ -267,7 +272,7 @@ mod tests {
 
     #[test]
     fn config_loads_from_yaml() {
-        let configs = ProjectConfigurations::load(&yaml_contents());
+        let configs = ProjectConfigurations::parse(&yaml_contents());
 
         let rails_config = configs.get("Rails").unwrap();
         assert_eq!(

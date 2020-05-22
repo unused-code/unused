@@ -1,0 +1,156 @@
+- name: Rails
+  matches_if:
+    - token_equals: ApplicationController
+    - path_starts_with: app/controllers/
+    - path_starts_with: app/models/
+  application_files:
+    - app/
+    - lib/
+  test_files:
+    - spec/
+    - test/
+    - features/
+  config_files:
+    - db/
+    - config/
+  auto_low_likelihood:
+    - name: Test
+      token_ends_with: Test
+      path_ends_with: _test.rb
+    - name: Test
+      token_ends_with: Test
+      path_ends_with: _tests.rb
+    - name: Test Instances
+      token_starts_with: test_
+      path_ends_with: _test.rb
+    - name: Test Instances
+      token_starts_with: test_
+      path_ends_with: _tests.rb
+    - name: Pundit Policies
+      path_starts_with: app/policies
+      path_ends_with: _policy.rb
+      token_ends_with: Policy
+    - name: Pundit Policies
+      path_starts_with: app/policies
+      path_ends_with: _policy.rb
+      allowed_tokens:
+        - new?
+        - index?
+        - show?
+        - create?
+        - edit?
+        - update?
+        - delete?
+    - name: JSONAPI::Resources
+      path_starts_with: app/resources
+      path_ends_with: _resource.rb
+      token_ends_with: Resource
+    - name: JSONAPI::Resources Methods
+      path_starts_with: app/resources
+      path_ends_with: _resource.rb
+      allowed_tokens:
+        - updatable_fields
+        - creatable_fields
+    - name: Preview
+      path_starts_with: spec/mailers
+      token_ends_with: Preview
+    - name: Migration
+      path_starts_with: db/migrate/
+      path_ends_with: .rb
+      class_or_module: true
+    - name: Seed Migration
+      path_starts_with: db/data/
+      path_ends_with: .rb
+      class_or_module: true
+    - name: Migration
+      path_starts_with: db/archived_migrate/
+      path_ends_with: .rb
+      class_or_module: true
+    - name: Controller
+      path_starts_with: app/controllers/
+      path_ends_with: .rb
+      token_ends_with: Controller
+    - name: Model
+      path_starts_with: app/models/
+      path_ends_with: .rb
+      class_or_module: true
+    - name: Helper
+      path_starts_with: app/helpers/
+      path_ends_with: .rb
+      class_or_module: true
+    - name: Clearance helpers
+      path_starts_with: app/controllers/
+      path_ends_with: .rb
+      allowed_tokens:
+        - url_after_create
+        - url_after_destroy
+        - after_sign_in_path_for
+        - after_sign_out_path_for
+    - name: GraphQL Helpers
+      path_starts_with: app/graphql/
+      path_ends_with: .rb
+      allowed_tokens:
+        - BaseEnum
+        - BaseInputObject
+        - BaseScalar
+        - id_from_object
+        - resolve_type
+        - resolve_field
+        - object_from_id
+    - name: ActiveModel Validators
+      path_starts_with: app/validators/
+      path_ends_with: .rb
+      token_ends_with: Validator
+    - name: SimpleForm Input
+      path_starts_with: app/inputs/
+      path_ends_with: .rb
+      token_ends_with: Input
+    - name: RSpec Methods
+      path_starts_with: spec/
+      path_ends_with: .rb
+      allowed_tokens:
+        - post_processing
+
+- name: Phoenix
+  matches_if:
+    - token_equals: Application
+    - token_equals: Endpoint
+    - token_equals: Repo
+    - token_equals: Router
+    - path_equals: mix.exs
+  application_files:
+    - lib
+  config_files:
+    - priv
+  test_files:
+    - test
+  auto_low_likelihood:
+    - name: ExMachina Factories
+      token_ends_with: _factory
+      path_ends_with: .ex
+    - name: Phoenix Macros
+      allowed_tokens:
+        - __using__
+        - handle_out
+        - MixProject
+    - name: Tests
+      token_ends_with: Test
+      path_starts_with: test/
+      path_ends_with: _test.exs
+    - name: Migrations
+      class_or_module: true
+      path_starts_with: priv/repo/migrations
+      path_ends_with: .exs
+    - name: Views
+      token_ends_with: View
+      path_ends_with: _view.ex
+    - name: LiveView
+      path_ends_with: _view.ex
+      allowed_tokens:
+        - mount
+        - render
+        - terminate
+        - handle_params
+        - handle_event
+        - handle_call
+        - handle_info
