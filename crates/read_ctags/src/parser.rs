@@ -14,6 +14,7 @@ use nom::{
     IResult,
 };
 use std::collections::{BTreeMap, HashSet};
+use std::iter::FromIterator;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum ParsedField<'a> {
@@ -32,9 +33,10 @@ pub fn parse(input: &str) -> IResult<&str, (TagProgram, HashSet<CtagItem>)> {
 
 fn tags_body(input: &str) -> IResult<&str, HashSet<CtagItem>> {
     terminated(
-        map(separated_list(tag("\n"), ctag_item_parser), |res| {
-            res.iter().cloned().collect()
-        }),
+        map(
+            separated_list(tag("\n"), ctag_item_parser),
+            HashSet::from_iter,
+        ),
         opt(tag("\n")),
     )(input)
 }
