@@ -1,6 +1,7 @@
 # Unused
 
-![](https://github.com/unused-code/unused_rs/workflows/CI/badge.svg)
+![CI](https://github.com/unused-code/unused_rs/workflows/CI/badge.svg)
+![Security audit](https://github.com/unused-code/unused_rs/workflows/Security%20audit/badge.svg)
 
 Unused identifies possible dead code in dynamic programming languages.
 
