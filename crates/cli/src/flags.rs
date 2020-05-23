@@ -7,6 +7,9 @@ use token_analysis::{OrderField, UsageLikelihoodStatus};
 pub enum Command {
     /// Run diagnostics to identify any potential issues running unused
     Doctor,
+
+    /// Write the default YAML configuration to STDOUT
+    DefaultYaml,
 }
 
 #[derive(Debug, StructOpt)]
