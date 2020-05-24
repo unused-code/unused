@@ -147,17 +147,14 @@ impl TokenSearchResults {
     pub fn generate_with_config(config: &TokenSearchConfig) -> Self {
         let loaded_files = Self::load_all_files(&config.files);
 
-        let filtered_results = config
+        let filtered_results: Vec<Token> = config
             .tokens
             .clone()
             .into_iter()
-            .filter(|t| config.filter_token(t))
-            .filter(|t| config.filter_language(t));
-
-        let tokens: Vec<String> = filtered_results
-            .clone()
-            .map(|r| r.token.to_string())
+            .filter(|t| config.filter_token(t) && config.filter_language(t))
             .collect();
+
+        let tokens: Vec<_> = filtered_results.iter().map(|r| &r.token).collect();
         let ac = AhoCorasickBuilder::new()
             .match_kind(MatchKind::LeftmostLongest)
             .build(tokens);
@@ -166,13 +163,9 @@ impl TokenSearchResults {
             .par_iter()
             .progress_with(config.toggleable_progress_bar(&"🤔 Working...", loaded_files.len()))
             .fold(HashMap::new, |mut results, (f, contents)| {
-                let mut matches: Vec<usize> = vec![];
-
-                for mat in ac.find_iter(contents) {
-                    matches.push(mat.pattern());
-                }
-
-                for (key, res) in matches
+                for (key, res) in ac
+                    .find_iter(contents)
+                    .map(|v| v.pattern())
                     .into_iter()
                     .sorted_by_key(|&v| v)
                     .group_by(|&v| v)
@@ -197,15 +190,15 @@ impl TokenSearchResults {
                 })
             });
 
-        let lookup: Vec<Token> = filtered_results.collect();
-        let final_results = res.iter().fold(Vec::new(), |mut acc, (idx, occurrences)| {
-            let token = lookup[*idx].clone();
-            acc.push(TokenSearchResult {
-                token,
-                occurrences: occurrences.clone(),
-            });
-            acc
-        });
+        let final_results = res
+            .into_iter()
+            .map(|(idx, occurrences)| TokenSearchResult {
+                token: filtered_results[idx].clone(),
+                occurrences,
+            })
+            .collect();
+
+        std::thread::spawn(move || drop(ac));
 
         TokenSearchResults(final_results)
     }
