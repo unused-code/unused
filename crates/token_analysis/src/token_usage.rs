@@ -20,8 +20,11 @@ impl TokenUsage {
         token_search_result: TokenSearchResult,
     ) -> Self {
         let file_type_counts = FileTypeCounts::new(project_configuration, &token_search_result);
-        let usage_likelihood =
-            UsageLikelihood::calculate(project_configuration, &token_search_result);
+        let usage_likelihood = UsageLikelihood::calculate(
+            project_configuration,
+            &token_search_result,
+            &file_type_counts,
+        );
         TokenUsage {
             file_type_counts,
             usage_likelihood,

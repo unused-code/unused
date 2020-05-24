@@ -65,9 +65,8 @@ impl UsageLikelihood {
     pub fn calculate(
         project_configuration: &ProjectConfiguration,
         token_search_result: &TokenSearchResult,
+        all_counts: &FileTypeCounts,
     ) -> Self {
-        let all_counts = FileTypeCounts::new(project_configuration, token_search_result);
-
         match project_configuration.low_likelihood_match(token_search_result) {
             Some(low_likelihood_config) => UsageLikelihood {
                 status: UsageLikelihoodStatus::Low,
@@ -133,9 +132,14 @@ mod tests {
         let mut occurrences = HashMap::new();
         occurrences.insert(path.to_string(), 1);
         let result = TokenSearchResult { token, occurrences };
+        let file_type_counts = FileTypeCounts::new(&ProjectConfiguration::default(), &result);
 
         assert_eq!(
-            UsageLikelihood::calculate(&ProjectConfiguration::default(), &result),
+            UsageLikelihood::calculate(
+                &ProjectConfiguration::default(),
+                &result,
+                &file_type_counts
+            ),
             UsageLikelihood {
                 status: UsageLikelihoodStatus::High,
                 reason: String::from("Only one occurrence exists")
