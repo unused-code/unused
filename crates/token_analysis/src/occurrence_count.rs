@@ -73,35 +73,34 @@ impl FileTypeCounts {
         token_search_result: &TokenSearchResult,
     ) -> Self {
         let results = token_search_result.occurrences.clone();
+        let mut app: HashMap<&str, usize> = HashMap::new();
+        let mut config: HashMap<&str, usize> = HashMap::new();
+        let mut test: HashMap<&str, usize> = HashMap::new();
+        let mut unknown: HashMap<&str, usize> = HashMap::new();
+
+        for (k, v) in &results {
+            if Self::is_application_file(project_configuration, &k) {
+                app.insert(k, *v);
+            }
+
+            if Self::is_config_file(project_configuration, &k) {
+                config.insert(k, *v);
+            }
+
+            if Self::is_test_file(project_configuration, &k) {
+                test.insert(k, *v);
+            }
+
+            if Self::is_unknown_file(project_configuration, &k) {
+                unknown.insert(k, *v);
+            }
+        }
+
         Self {
-            app: Counts::from_occurrences(
-                &results
-                    .clone()
-                    .into_iter()
-                    .filter(|(k, _)| Self::is_application_file(project_configuration, &k))
-                    .collect(),
-            ),
-            config: Counts::from_occurrences(
-                &results
-                    .clone()
-                    .into_iter()
-                    .filter(|(k, _)| Self::is_config_file(project_configuration, &k))
-                    .collect(),
-            ),
-            test: Counts::from_occurrences(
-                &results
-                    .clone()
-                    .into_iter()
-                    .filter(|(k, _)| Self::is_test_file(project_configuration, &k))
-                    .collect(),
-            ),
-            unknown: Counts::from_occurrences(
-                &results
-                    .clone()
-                    .into_iter()
-                    .filter(|(k, _)| Self::is_unknown_file(project_configuration, &k))
-                    .collect(),
-            ),
+            app: Counts::from_occurrences(&app),
+            config: Counts::from_occurrences(&config),
+            test: Counts::from_occurrences(&test),
+            unknown: Counts::from_occurrences(&unknown),
         }
     }
 
