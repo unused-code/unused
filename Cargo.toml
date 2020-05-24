@@ -12,6 +12,7 @@ read_ctags = { path = "crates/read_ctags/" }
 token_search = { path = "crates/token_search/" }
 codebase_files = { path = "crates/codebase_files/" }
 cli = { path = "crates/cli/" }
+mimalloc = { version = "*", default-features = false }
 
 [[bin]]
 name = "read-ctags-rs"
