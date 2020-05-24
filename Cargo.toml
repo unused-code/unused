@@ -32,3 +32,8 @@ path = "src/bin/unused.rs"
 
 [workspace]
 members = ["crates/*"]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+panic = "abort"
