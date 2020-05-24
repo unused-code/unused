@@ -139,8 +139,8 @@ impl TokenSearchResults {
     }
 
     /// Extract search results
-    pub fn value(&self) -> Vec<TokenSearchResult> {
-        self.0.clone()
+    pub fn value(&self) -> &[TokenSearchResult] {
+        &self.0
     }
 
     /// Generate results based on provided search config

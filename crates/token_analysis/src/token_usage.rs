@@ -42,7 +42,7 @@ impl TokenUsageResults {
         results: TokenSearchResults,
         config: &ProjectConfiguration,
     ) -> Self {
-        let unwrapped_results = results.value();
+        let unwrapped_results = results.value().to_vec();
         let size = &unwrapped_results.len();
 
         let results = unwrapped_results
