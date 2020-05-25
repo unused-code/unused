@@ -1,9 +1,10 @@
 use super::analysis_filter::{AnalysisFilter, OrderField, SortOrder};
 use super::occurrence_count::FileTypeCounts;
 use super::usage_likelihood::UsageLikelihood;
-use indicatif::ProgressIterator;
+use indicatif::ParallelProgressIterator;
 use itertools::{rev, Itertools};
 use project_configuration::ProjectConfiguration;
+use rayon::prelude::*;
 use serde::Serialize;
 use token_search::{TokenSearchConfig, TokenSearchResult, TokenSearchResults};
 
@@ -46,9 +47,9 @@ impl TokenUsageResults {
         let size = &unwrapped_results.len();
 
         let results = unwrapped_results
-            .into_iter()
+            .par_iter()
             .progress_with(token_search_config.toggleable_progress_bar("🧐 Analyzing...", *size))
-            .map(|r| TokenUsage::new(config, r))
+            .map(|r| TokenUsage::new(config, r.clone()))
             .collect::<Vec<_>>();
         TokenUsageResults(results)
     }

@@ -13,7 +13,8 @@ project_configuration = { path = "../../crates/project_configuration/" }
 serde_json = "1.0.50"
 serde = { version = "1.0.105", features = ["derive"] }
 itertools = "0.9"
-indicatif = {version = "0.14"}
+rayon = "1.1"
+indicatif = {version = "0.14", features = ["with_rayon"]}
 
 [dev-dependencies]
 totems = "0.2.7"

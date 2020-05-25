@@ -704,6 +704,7 @@ dependencies = [
  "indicatif",
  "itertools",
  "project_configuration",
+ "rayon",
  "read_ctags",
  "serde",
  "serde_json",
