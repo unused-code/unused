@@ -14,8 +14,26 @@ pub struct CliConfiguration {
     flags: Flags,
     token_search_config: TokenSearchConfig,
     analysis_filter: AnalysisFilter,
-    project_configuration: ProjectConfiguration,
+    project_configuration: SelectedProjectConfiguration,
     outcome: TokenUsageResults,
+}
+
+enum SelectedProjectConfiguration {
+    DefaultFromBestMatch(ProjectConfiguration),
+    DefaultFromProjectType(ProjectConfiguration, String),
+    ProjectType(ProjectConfiguration),
+    BestMatch(ProjectConfiguration),
+}
+
+impl SelectedProjectConfiguration {
+    pub fn project_configuration(&self) -> &ProjectConfiguration {
+        match self {
+            Self::DefaultFromBestMatch(config) => config,
+            Self::DefaultFromProjectType(config, _) => config,
+            Self::ProjectType(config) => config,
+            Self::BestMatch(config) => config,
+        }
+    }
 }
 
 impl CliConfiguration {
@@ -23,11 +41,13 @@ impl CliConfiguration {
         let token_search_config = build_token_search_config(&flags, tokens);
         let analysis_filter = build_analysis_filter(&flags);
         let results = TokenSearchResults::generate_with_config(&token_search_config);
-        let project_configuration = load_and_parse_config()
-            .best_match(&results)
-            .unwrap_or(ProjectConfiguration::default());
-        let outcome =
-            TokenUsageResults::calculate(&token_search_config, results, &project_configuration);
+
+        let project_configuration = select_project_configuration(&flags, &results);
+        let outcome = TokenUsageResults::calculate(
+            &token_search_config,
+            results,
+            project_configuration.project_configuration(),
+        );
 
         Self {
             flags,
@@ -99,13 +119,25 @@ impl CliConfiguration {
     }
 
     pub fn configuration_name(&self) -> String {
-        self.project_configuration.name.to_string()
+        match &self.project_configuration {
+            SelectedProjectConfiguration::DefaultFromBestMatch(config) => {
+                format!("{} (unable to find a match)", config.name)
+            }
+            SelectedProjectConfiguration::DefaultFromProjectType(config, project_type) => format!(
+                "{} (unable to find project type '{}')",
+                config.name, project_type
+            ),
+            SelectedProjectConfiguration::ProjectType(config) => format!("{}", config.name),
+            SelectedProjectConfiguration::BestMatch(config) => {
+                format!("{} (based on best match)", config.name)
+            }
+        }
     }
 
     pub fn low_likelihood_conflicts(&self) -> HashMap<String, Vec<AssertionConflict>> {
         let mut conflict_results = HashMap::new();
 
-        for ll in self.project_configuration.low_likelihood.iter() {
+        for ll in self.project_configuration().low_likelihood.iter() {
             let conflicts = ll.conflicts();
 
             if conflicts.len() > 0 {
@@ -114,6 +146,10 @@ impl CliConfiguration {
         }
 
         conflict_results
+    }
+
+    pub fn project_configuration(&self) -> &ProjectConfiguration {
+        self.project_configuration.project_configuration()
     }
 }
 
@@ -136,6 +172,27 @@ fn build_token_search_config(cmd: &Flags, token_results: Vec<Token>) -> TokenSea
     }
 
     search_config
+}
+
+fn select_project_configuration(
+    cmd: &Flags,
+    results: &TokenSearchResults,
+) -> SelectedProjectConfiguration {
+    match &cmd.project_type {
+        None => load_and_parse_config()
+            .best_match(&results)
+            .map(SelectedProjectConfiguration::BestMatch)
+            .unwrap_or(SelectedProjectConfiguration::DefaultFromBestMatch(
+                ProjectConfiguration::default(),
+            )),
+        Some(project_type) => load_and_parse_config()
+            .get(&project_type)
+            .map(SelectedProjectConfiguration::ProjectType)
+            .unwrap_or(SelectedProjectConfiguration::DefaultFromProjectType(
+                ProjectConfiguration::default(),
+                project_type.clone(),
+            )),
+    }
 }
 
 fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {

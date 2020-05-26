@@ -71,6 +71,14 @@ pub struct Flags {
     #[structopt(long, use_delimiter = true)]
     pub ignore: Vec<String>,
 
+    /// Project type configuration
+    ///
+    /// By default, unused will attempt to detect the type of project you're working on based on
+    /// heuristics on file or token detection. Setting this will override behavior. If the project
+    /// type is not found, unused will fallback to default settings (rather than best match).
+    #[structopt(long)]
+    pub project_type: Option<String>,
+
     #[structopt(subcommand)]
     pub cmd: Option<Command>,
 }
