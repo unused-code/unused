@@ -16,7 +16,7 @@ pub enum SortOrder {
     Descending(OrderField),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum OrderField {
     Token,
     File,
@@ -56,14 +56,14 @@ impl AnalysisFilter {
 
     pub fn set_order_ascending(&mut self) {
         match &self.sort_order {
-            SortOrder::Descending(field) => self.sort_order = SortOrder::Ascending(field.clone()),
+            SortOrder::Descending(field) => self.sort_order = SortOrder::Ascending(*field),
             _ => (),
         }
     }
 
     pub fn set_order_descending(&mut self) {
         match &self.sort_order {
-            SortOrder::Ascending(field) => self.sort_order = SortOrder::Descending(field.clone()),
+            SortOrder::Ascending(field) => self.sort_order = SortOrder::Descending(*field),
             _ => (),
         }
     }

@@ -29,7 +29,7 @@ pub fn run() {
         Some(flags::Command::Doctor) => Doctor::new().render(),
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
         _ => match Token::all() {
-            Ok((_, results)) => CliConfiguration::new(flags, &results).render(),
+            Ok((_, results)) => CliConfiguration::new(flags, results).render(),
             Err(e) => error_message::failed_token_parse(e),
         },
     }

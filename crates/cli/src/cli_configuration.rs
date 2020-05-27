@@ -19,7 +19,7 @@ pub struct CliConfiguration {
 }
 
 impl CliConfiguration {
-    pub fn new(flags: Flags, tokens: &[Token]) -> Self {
+    pub fn new(flags: Flags, tokens: Vec<Token>) -> Self {
         let token_search_config = build_token_search_config(&flags, tokens);
         let analysis_filter = build_analysis_filter(&flags);
         let results = TokenSearchResults::generate_with_config(&token_search_config);
@@ -117,9 +117,9 @@ impl CliConfiguration {
     }
 }
 
-fn build_token_search_config(cmd: &Flags, token_results: &[Token]) -> TokenSearchConfig {
+fn build_token_search_config(cmd: &Flags, token_results: Vec<Token>) -> TokenSearchConfig {
     let mut search_config = TokenSearchConfig::default();
-    search_config.tokens = token_results.to_vec();
+    search_config.tokens = token_results;
 
     if cmd.no_progress {
         search_config.display_progress = false;

@@ -21,8 +21,7 @@ impl Token {
         let defined_paths = definitions
             .iter()
             .map(|v| v.file_path.to_string())
-            .collect::<HashSet<_>>()
-            .clone();
+            .collect::<HashSet<_>>();
 
         Self {
             token,

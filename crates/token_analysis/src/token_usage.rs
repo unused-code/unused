@@ -47,9 +47,9 @@ impl TokenUsageResults {
         let size = &unwrapped_results.len();
 
         let results = unwrapped_results
-            .par_iter()
+            .into_par_iter()
             .progress_with(token_search_config.toggleable_progress_bar("🧐 Analyzing...", *size))
-            .map(|r| TokenUsage::new(config, r.clone()))
+            .map(move |r| TokenUsage::new(config, r))
             .collect::<Vec<_>>();
         TokenUsageResults(results)
     }

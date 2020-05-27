@@ -145,8 +145,6 @@ impl TokenSearchResults {
 
     /// Generate results based on provided search config
     pub fn generate_with_config(config: &TokenSearchConfig) -> Self {
-        let loaded_files = Self::load_all_files(&config.files);
-
         let filtered_results: Vec<Token> = config
             .tokens
             .clone()
@@ -159,33 +157,36 @@ impl TokenSearchResults {
             .match_kind(MatchKind::LeftmostLongest)
             .build(tokens);
 
-        let res = loaded_files
+        let res = config
+            .files
             .par_iter()
-            .progress_with(config.toggleable_progress_bar(&"🤔 Working...", loaded_files.len()))
-            .fold(HashMap::new, |mut results, (f, contents)| {
-                for (key, res) in ac
-                    .find_iter(contents)
-                    .map(|v| v.pattern())
-                    .into_iter()
-                    .sorted_by_key(|&v| v)
-                    .group_by(|&v| v)
-                    .into_iter()
-                    .map(|(idx, res)| (idx, res.count()))
-                    .collect::<Vec<(usize, usize)>>()
-                {
-                    let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
+            .progress_with(config.toggleable_progress_bar(&"🤔 Working...", config.files.len()))
+            .fold(HashMap::new, |mut results, f| {
+                if let Ok(contents) = Self::read_file(&f) {
+                    for (key, res) in ac
+                        .find_iter(&contents)
+                        .map(|v| v.pattern())
+                        .into_iter()
+                        .sorted_by_key(|&v| v)
+                        .group_by(|&v| v)
+                        .into_iter()
+                        .map(|(idx, res)| (idx, res.count()))
+                        .collect::<Vec<(usize, usize)>>()
+                    {
+                        let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
 
-                    if let Some(fp) = f.to_str() {
-                        file_with_occurrences.insert(fp.to_string(), res);
+                        if let Some(fp) = f.to_str() {
+                            file_with_occurrences.insert(fp.to_string(), res);
+                        }
                     }
                 }
 
                 results
             })
             .reduce(HashMap::new, |m1, m2| {
-                m2.iter().fold(m1, |mut acc, (k, v)| {
-                    let res = acc.entry(*k).or_insert(HashMap::new());
-                    res.extend(v.clone());
+                m2.into_iter().fold(m1, |mut acc, (k, v)| {
+                    let res = acc.entry(k).or_insert(HashMap::new());
+                    res.extend(v);
                     acc
                 })
             });
@@ -199,26 +200,9 @@ impl TokenSearchResults {
             .collect();
 
         std::thread::spawn(move || drop(ac));
+        std::thread::spawn(move || drop(filtered_results));
 
         TokenSearchResults(final_results)
-    }
-
-    fn load_all_files(filenames: &[PathBuf]) -> HashMap<&PathBuf, String> {
-        filenames
-            .par_iter()
-            .fold(HashMap::new, |mut acc: HashMap<&PathBuf, String>, f| {
-                if let Ok(contents) = Self::read_file(&f) {
-                    acc.insert(&f, contents);
-                }
-
-                acc
-            })
-            .reduce(HashMap::new, |m1, m2| {
-                m2.iter().fold(m1, |mut acc, (k, v)| {
-                    acc.insert(*k, v.to_string());
-                    acc
-                })
-            })
     }
 
     fn read_file(filename: &PathBuf) -> Result<String, io::Error> {
