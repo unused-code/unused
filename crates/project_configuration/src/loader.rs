@@ -8,15 +8,17 @@ use yaml_rust::{Yaml, YamlLoader};
 const PATH_STARTS_WITH: &str = "path_starts_with";
 const PATH_ENDS_WITH: &str = "path_ends_with";
 const PATH_EQUALS: &str = "path_equals";
+const PATH_CONTAINS: &str = "path_contains";
 const TOKEN_EQUALS: &str = "token_equals";
 const TOKEN_STARTS_WITH: &str = "token_starts_with";
 const TOKEN_ENDS_WITH: &str = "token_ends_with";
 const CLASS_OR_MODULE: &str = "class_or_module";
 const ALLOWED_TOKENS: &str = "allowed_tokens";
-const SUPPORTED_ASSERTIONS: [&'static str; 8] = [
+const SUPPORTED_ASSERTIONS: [&'static str; 9] = [
     PATH_STARTS_WITH,
     PATH_ENDS_WITH,
     PATH_EQUALS,
+    PATH_CONTAINS,
     TOKEN_EQUALS,
     TOKEN_STARTS_WITH,
     TOKEN_ENDS_WITH,
@@ -70,7 +72,7 @@ impl ProjectConfigurations {
             Assertion::PathAssertion(ValueMatcher::Equals(_)) => Some(PATH_EQUALS),
             Assertion::PathAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => None,
             Assertion::PathAssertion(ValueMatcher::StartsWithCapital) => None,
-            Assertion::PathAssertion(ValueMatcher::Contains(_)) => None,
+            Assertion::PathAssertion(ValueMatcher::Contains(_)) => Some(PATH_CONTAINS),
         }
     }
 
@@ -185,6 +187,9 @@ impl ProjectConfigurations {
             PATH_EQUALS => Some(Assertion::PathAssertion(ValueMatcher::Equals(
                 val.to_string(),
             ))),
+            PATH_CONTAINS => Some(Assertion::PathAssertion(ValueMatcher::Contains(
+                val.to_string(),
+            ))),
             TOKEN_STARTS_WITH => Some(Assertion::TokenAssertion(ValueMatcher::StartsWith(
                 val.to_string(),
             ))),
@@ -269,7 +274,7 @@ mod tests {
       path_ends_with: .rb
     - name: JSONAPI::Resources
       token_ends_with: Resource
-      path_starts_with: app/resources
+      path_contains: app/resources
 "
         .to_string()
     }
@@ -340,9 +345,7 @@ mod tests {
             &LowLikelihoodConfig {
                 name: String::from("JSONAPI::Resources"),
                 matchers: vec![
-                    Assertion::PathAssertion(ValueMatcher::StartsWith(String::from(
-                        "app/resources"
-                    ))),
+                    Assertion::PathAssertion(ValueMatcher::Contains(String::from("app/resources"))),
                     Assertion::TokenAssertion(ValueMatcher::EndsWith(String::from("Resource"))),
                 ]
             }
