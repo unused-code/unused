@@ -27,7 +27,7 @@ name = "tracked-files-rs"
 path = "src/bin/codebase_files.rs"
 
 [[bin]]
-name = "unused-rs"
+name = "unused"
 path = "src/bin/unused.rs"
 
 [workspace]
