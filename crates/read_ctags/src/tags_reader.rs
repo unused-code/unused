@@ -68,8 +68,8 @@ fn git_path() -> Option<PathBuf> {
     }
 }
 
-fn cwd_tags_paths() -> Vec<PathBuf> {
-    vec![PathBuf::from("tags"), PathBuf::from("tmp/tags")]
+fn cwd_tags_paths(cwd: PathBuf) -> Vec<PathBuf> {
+    vec![cwd.join("tags"), cwd.join("tmp/tags")]
 }
 
 impl Default for TagsReader {
@@ -78,11 +78,12 @@ impl Default for TagsReader {
 
         if let Ok(current_dir) = current_dir() {
             if let Some(app_git_path) = git_path() {
-                if current_dir == app_git_path {
-                    filenames.push(app_git_path.join("tags"));
-                    filenames.extend(cwd_tags_paths());
+                if app_git_path == PathBuf::from(".git") {
+                    let app_root = current_dir.join(app_git_path);
+                    filenames.push(app_root.join("tags"));
+                    filenames.extend(cwd_tags_paths(current_dir));
                 } else {
-                    filenames.extend(cwd_tags_paths());
+                    filenames.extend(cwd_tags_paths(current_dir));
                     filenames.push(app_git_path.join("tags"));
                     filenames.push(app_git_path.join("../tags"));
                     filenames.push(app_git_path.join("../tmp/tags"));
