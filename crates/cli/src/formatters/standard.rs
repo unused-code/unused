@@ -25,7 +25,7 @@ pub fn format(cli_config: &CliConfiguration) {
             analysis.defined_paths.len().to_string().yellow()
         );
         for d in analysis.defined_paths {
-            println!("   * {}", d.yellow());
+            println!("   * {}", d.to_string_lossy().yellow());
         }
 
         let occurred_count = analysis.occurred_paths.len();
@@ -33,7 +33,7 @@ pub fn format(cli_config: &CliConfiguration) {
         if occurred_count > 0 {
             println!("   Found in: ({})", occurred_count.to_string().yellow());
             for d in &analysis.occurred_paths {
-                println!("   * {}", d.yellow());
+                println!("   * {}", d.to_string_lossy().yellow());
             }
         }
 

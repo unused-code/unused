@@ -175,9 +175,7 @@ impl TokenSearchResults {
                     {
                         let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
 
-                        if let Some(fp) = f.to_str() {
-                            file_with_occurrences.insert(fp.to_string(), res);
-                        }
+                        file_with_occurrences.insert(f.clone(), res);
                     }
                 }
 
@@ -231,24 +229,24 @@ pub struct TokenSearchResult {
     /// The token being searched
     pub token: Token,
     /// A HashMap of paths and occurrence counts
-    pub occurrences: HashMap<String, usize>,
+    pub occurrences: HashMap<PathBuf, usize>,
 }
 
 impl TokenSearchResult {
     /// The paths where a token is defined
-    pub fn defined_paths(&self) -> HashSet<String> {
+    pub fn defined_paths(&self) -> HashSet<PathBuf> {
         self.token.defined_paths.clone()
     }
 
     /// The paths where a token occurs that are not also where the token is defined
-    pub fn occurred_paths(&self) -> HashSet<String> {
+    pub fn occurred_paths(&self) -> HashSet<PathBuf> {
         self.all_occurred_paths()
             .difference(&self.defined_paths())
             .cloned()
             .collect()
     }
 
-    fn all_occurred_paths(&self) -> HashSet<String> {
+    fn all_occurred_paths(&self) -> HashSet<PathBuf> {
         self.occurrences.keys().cloned().collect()
     }
 }

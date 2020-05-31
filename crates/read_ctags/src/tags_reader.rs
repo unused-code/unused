@@ -79,8 +79,7 @@ impl Default for TagsReader {
         if let Ok(current_dir) = current_dir() {
             if let Some(app_git_path) = git_path() {
                 if app_git_path == PathBuf::from(".git") {
-                    let app_root = current_dir.join(app_git_path);
-                    filenames.push(app_root.join("tags"));
+                    filenames.push(current_dir.join(app_git_path).join("tags"));
                     filenames.extend(cwd_tags_paths(current_dir));
                 } else {
                     filenames.extend(cwd_tags_paths(current_dir));

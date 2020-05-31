@@ -13,7 +13,7 @@ pub fn format(cli_config: &CliConfiguration) {
         println!(
             "{:token_width$} {:file_width$} {}",
             display_token,
-            analysis.first_path.cyan(),
+            analysis.first_path.to_string_lossy().cyan(),
             analysis.likelihood_reason,
             token_width = token_width,
             file_width = file_width

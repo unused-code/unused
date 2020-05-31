@@ -76,7 +76,7 @@ impl CliConfiguration {
         self.outcome
             .filter(&self.analysis_filter)
             .iter()
-            .map(|t| t.result.token.first_path().len())
+            .map(|t| t.result.token.first_path().to_string_lossy().len())
             .into_iter()
             .max()
             .unwrap_or(0)

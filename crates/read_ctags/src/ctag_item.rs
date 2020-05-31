@@ -13,7 +13,7 @@ pub struct CtagItem {
     /// Name of the tag
     pub name: String,
     /// Path identified by ctags
-    pub file_path: String,
+    pub file_path: PathBuf,
     /// Tag address
     pub address: String,
     /// Language, based on file path

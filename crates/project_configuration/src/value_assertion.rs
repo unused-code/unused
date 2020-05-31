@@ -14,6 +14,7 @@ impl Assertion {
                 .token
                 .defined_paths
                 .iter()
+                .filter_map(|path| path.to_str())
                 .any(|path| matcher.check(path)),
             Assertion::TokenAssertion(matcher) => matcher.check(&token_search_result.token.token),
         }

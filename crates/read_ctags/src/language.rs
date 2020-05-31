@@ -47,8 +47,8 @@ impl std::fmt::Display for Language {
 
 impl Language {
     /// Given a path with file extension, calculate its language
-    pub fn from_path(path: &str) -> Option<Language> {
-        match Path::new(path).extension() {
+    pub fn from_path<P: AsRef<Path>>(path: P) -> Option<Language> {
+        match path.as_ref().extension() {
             Some(v) => v.to_str().and_then(|x| Language::from_str(x).ok()),
             None => Some(Language::Sh),
         }

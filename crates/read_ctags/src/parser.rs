@@ -15,6 +15,7 @@ use nom::{
 };
 use std::collections::{BTreeMap, HashSet};
 use std::iter::FromIterator;
+use std::path::PathBuf;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 enum ParsedField<'a> {
@@ -94,16 +95,16 @@ fn tag_address_without_fields_parser(input: &str) -> IResult<&str, String> {
 
 fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
     let (input, name) = context("tagName", internal::to_tab)(input)?;
-    let (input, file_path) = context("tagPath", internal::to_tab)(input)?;
+    let (input, file_path) = context("tagPath", map(internal::to_tab, PathBuf::from))(input)?;
     let (input, (address, parsed_fields)) = address_and_fields_parser(input)?;
-    let language = Language::from_path(file_path);
+    let language = Language::from_path(&file_path);
     let (kind, tags) = build_kind_and_fields(language, parsed_fields);
 
     Ok((
         input,
         CtagItem {
             name: name.to_string(),
-            file_path: file_path.trim_start_matches("../").to_string(),
+            file_path,
             address,
             language,
             tags,
@@ -138,7 +139,7 @@ fn build_kind_and_fields<'a>(
 fn parses_without_metadata() {
     let result: HashSet<CtagItem> = vec![CtagItem {
         name: String::from("withInfo"),
-        file_path: String::from("path/to/file.rb"),
+        file_path: PathBuf::from("path/to/file.rb"),
         address: String::from("45"),
         language: Some(Language::Ruby),
         tags: BTreeMap::new(),
@@ -174,7 +175,7 @@ fn parses_item_lines() {
             "",
             CtagItem {
                 name: String::from("withInfo"),
-                file_path: String::from("path/to/file.rb"),
+                file_path: PathBuf::from("path/to/file.rb"),
                 address: String::from("45"),
                 language: Some(Language::Ruby),
                 tags: BTreeMap::new(),
@@ -195,7 +196,7 @@ fn parses_multiple_lines() {
                 vec![
                     CtagItem {
                         name: String::from("first"),
-                        file_path: String::from("path/to/file.rb"),
+                        file_path: PathBuf::from("path/to/file.rb"),
                         address: String::from("1"),
                         language: Some(Language::Ruby),
                         tags: BTreeMap::new(),
@@ -203,7 +204,7 @@ fn parses_multiple_lines() {
                     },
                     CtagItem {
                         name: String::from("second"),
-                        file_path: String::from("path/to/file.rb"),
+                        file_path: PathBuf::from("path/to/file.rb"),
                         address: String::from("2"),
                         language: Some(Language::Ruby),
                         tags: BTreeMap::new(),

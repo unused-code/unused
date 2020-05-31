@@ -106,14 +106,15 @@ mod tests {
     use super::*;
     use read_ctags::{CtagItem, Language, TokenKind};
     use std::collections::{BTreeMap, HashMap};
+    use std::path::PathBuf;
     use token_search::Token;
 
-    fn build_ruby_file(token: &str, path: &str, kind: TokenKind) -> Token {
+    fn build_ruby_file(token: &str, path: &PathBuf, kind: TokenKind) -> Token {
         Token::new(
             token.to_string(),
             vec![CtagItem {
                 name: token.to_string(),
-                file_path: path.to_string(),
+                file_path: path.to_path_buf(),
                 address: String::from("1"),
                 language: Some(Language::Ruby),
                 tags: BTreeMap::new(),
@@ -127,10 +128,10 @@ mod tests {
 
     #[test]
     fn single_occurrence_is_high_likelihood() {
-        let path = "app/models/person.rb";
-        let token = build_ruby_file("Person", path, TokenKind::Class);
+        let path = PathBuf::from("app/models/person.rb");
+        let token = build_ruby_file("Person", &path, TokenKind::Class);
         let mut occurrences = HashMap::new();
-        occurrences.insert(path.to_string(), 1);
+        occurrences.insert(path, 1);
         let result = TokenSearchResult { token, occurrences };
         let file_type_counts = FileTypeCounts::new(&ProjectConfiguration::default(), &result);
 

@@ -12,7 +12,7 @@ pub struct Token {
     /// The set of `CtagItem`s that compose the token
     pub definitions: HashSet<CtagItem>,
     /// The paths where a token is defined
-    pub defined_paths: HashSet<String>,
+    pub defined_paths: HashSet<PathBuf>,
 }
 
 impl Token {
@@ -20,7 +20,7 @@ impl Token {
     pub fn new(token: String, definitions: HashSet<CtagItem>) -> Self {
         let defined_paths = definitions
             .iter()
-            .map(|v| v.file_path.to_string())
+            .map(|v| v.file_path.clone())
             .collect::<HashSet<_>>();
 
         Self {
@@ -41,8 +41,8 @@ impl Token {
     }
 
     /// Provide the first path in the list of defined paths
-    pub fn first_path(&self) -> String {
-        self.defined_paths.iter().nth(0).unwrap().to_string()
+    pub fn first_path(&self) -> &PathBuf {
+        self.defined_paths.iter().nth(0).unwrap()
     }
 
     /// All languages based on matched `CtagItem`s
@@ -85,7 +85,7 @@ mod tests {
     fn building_tokens_collapses_ctags() {
         let instance_method_spec = CtagItem {
             name: String::from("#name"),
-            file_path: String::from("spec/models/person_spec.rb"),
+            file_path: PathBuf::from("spec/models/person_spec.rb"),
             address: String::from("1"),
             language: Some(Language::Ruby),
             tags: BTreeMap::new(),
@@ -94,7 +94,7 @@ mod tests {
 
         let instance_method = CtagItem {
             name: String::from("name"),
-            file_path: String::from("app/models/person.rb"),
+            file_path: PathBuf::from("app/models/person.rb"),
             address: String::from("1"),
             language: Some(Language::Ruby),
             tags: BTreeMap::new(),

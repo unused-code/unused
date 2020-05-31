@@ -66,8 +66,12 @@ impl TokenUsageResults {
             .sorted_by_key(|a| match config.sort_order {
                 SortOrder::Ascending(OrderField::Token) => a.result.token.token.to_string(),
                 SortOrder::Descending(OrderField::Token) => a.result.token.token.to_string(),
-                SortOrder::Ascending(OrderField::File) => a.result.token.first_path(),
-                SortOrder::Descending(OrderField::File) => a.result.token.first_path(),
+                SortOrder::Ascending(OrderField::File) => {
+                    a.result.token.first_path().to_string_lossy().into_owned()
+                }
+                SortOrder::Descending(OrderField::File) => {
+                    a.result.token.first_path().to_string_lossy().into_owned()
+                }
             });
 
         match config.sort_order {

@@ -2,7 +2,7 @@ use project_configuration::{PathPrefix, ProjectConfiguration};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::ops::Add;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use token_search::TokenSearchResult;
 
 #[derive(Clone, Copy, Serialize)]
@@ -73,25 +73,25 @@ impl FileTypeCounts {
         token_search_result: &TokenSearchResult,
     ) -> Self {
         let results = token_search_result.occurrences.clone();
-        let mut app: HashMap<&str, usize> = HashMap::new();
-        let mut config: HashMap<&str, usize> = HashMap::new();
-        let mut test: HashMap<&str, usize> = HashMap::new();
-        let mut unknown: HashMap<&str, usize> = HashMap::new();
+        let mut app: HashMap<&PathBuf, usize> = HashMap::new();
+        let mut config: HashMap<&PathBuf, usize> = HashMap::new();
+        let mut test: HashMap<&PathBuf, usize> = HashMap::new();
+        let mut unknown: HashMap<&PathBuf, usize> = HashMap::new();
 
         for (k, v) in &results {
-            if Self::is_application_file(project_configuration, &k) {
+            if Self::is_application_file(project_configuration, k) {
                 app.insert(k, *v);
             }
 
-            if Self::is_config_file(project_configuration, &k) {
+            if Self::is_config_file(project_configuration, k) {
                 config.insert(k, *v);
             }
 
-            if Self::is_test_file(project_configuration, &k) {
+            if Self::is_test_file(project_configuration, k) {
                 test.insert(k, *v);
             }
 
-            if Self::is_unknown_file(project_configuration, &k) {
+            if Self::is_unknown_file(project_configuration, k) {
                 unknown.insert(k, *v);
             }
         }
@@ -113,23 +113,23 @@ impl FileTypeCounts {
             })
     }
 
-    fn is_application_file(project_configuration: &ProjectConfiguration, path: &str) -> bool {
+    fn is_application_file(project_configuration: &ProjectConfiguration, path: &PathBuf) -> bool {
         Self::file_type(project_configuration, path) == FileType::ApplicationFile
     }
 
-    fn is_config_file(project_configuration: &ProjectConfiguration, path: &str) -> bool {
+    fn is_config_file(project_configuration: &ProjectConfiguration, path: &PathBuf) -> bool {
         Self::file_type(project_configuration, path) == FileType::ConfigFile
     }
 
-    fn is_test_file(project_configuration: &ProjectConfiguration, path: &str) -> bool {
+    fn is_test_file(project_configuration: &ProjectConfiguration, path: &PathBuf) -> bool {
         Self::file_type(project_configuration, path) == FileType::TestFile
     }
 
-    fn is_unknown_file(project_configuration: &ProjectConfiguration, path: &str) -> bool {
+    fn is_unknown_file(project_configuration: &ProjectConfiguration, path: &PathBuf) -> bool {
         Self::file_type(project_configuration, path) == FileType::UnknownFile
     }
 
-    fn file_type(project_configuration: &ProjectConfiguration, path: &str) -> FileType {
+    fn file_type(project_configuration: &ProjectConfiguration, path: &PathBuf) -> FileType {
         if Self::compare_file(path, &project_configuration.application_file) {
             FileType::ApplicationFile
         } else if Self::compare_file(path, &project_configuration.test_file) {
@@ -141,7 +141,7 @@ impl FileTypeCounts {
         }
     }
 
-    fn compare_file(file: &str, paths: &[PathPrefix]) -> bool {
+    fn compare_file(file: &PathBuf, paths: &[PathPrefix]) -> bool {
         paths.iter().any(|p| p.compare(Path::new(file)))
     }
 }
