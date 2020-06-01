@@ -55,9 +55,14 @@ impl Display for CtagsParseError {
 
 impl CtagItem {
     /// Parse tags generatd by Universal Ctags to generate `CtagItem`s
-    pub fn parse(path: PathBuf, input: &str) -> Result<TagsFile, CtagsParseError> {
+    pub fn parse(
+        app_root: &PathBuf,
+        path: PathBuf,
+        input: &str,
+    ) -> Result<TagsFile, CtagsParseError> {
         match parser::parse(input) {
             Ok(("", (program, tags))) => Ok(TagsFile {
+                app_root: app_root.to_path_buf(),
                 path,
                 program,
                 tags,

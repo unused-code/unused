@@ -13,6 +13,7 @@ use std::process::Command;
 /// found
 pub struct TagsReader {
     filenames: Vec<PathBuf>,
+    app_root: PathBuf,
 }
 
 /// A struct capturing possible failures when attempting to find and read tags files
@@ -68,21 +69,24 @@ fn git_path() -> Option<PathBuf> {
     }
 }
 
-fn cwd_tags_paths(cwd: PathBuf) -> Vec<PathBuf> {
+fn cwd_tags_paths(cwd: &PathBuf) -> Vec<PathBuf> {
     vec![cwd.join("tags"), cwd.join("tmp/tags")]
 }
 
 impl Default for TagsReader {
     fn default() -> Self {
         let mut filenames = vec![];
+        let mut app_root = PathBuf::new();
 
         if let Ok(current_dir) = current_dir() {
             if let Some(app_git_path) = git_path() {
                 if app_git_path == PathBuf::from(".git") {
-                    filenames.push(current_dir.join(app_git_path).join("tags"));
-                    filenames.extend(cwd_tags_paths(current_dir));
+                    app_root = current_dir;
+                    filenames.push(app_root.join(app_git_path).join("tags"));
+                    filenames.extend(cwd_tags_paths(&app_root));
                 } else {
-                    filenames.extend(cwd_tags_paths(current_dir));
+                    app_root = app_git_path.join("..");
+                    filenames.extend(cwd_tags_paths(&current_dir));
                     filenames.push(app_git_path.join("tags"));
                     filenames.push(app_git_path.join("../tags"));
                     filenames.push(app_git_path.join("../tmp/tags"));
@@ -90,7 +94,10 @@ impl Default for TagsReader {
             }
         }
 
-        TagsReader { filenames }
+        TagsReader {
+            filenames,
+            app_root,
+        }
     }
 }
 
@@ -98,7 +105,7 @@ impl TagsReader {
     /// Loads and parses the first tags file it finds
     pub fn load(&self) -> Result<TagsFile, ReadCtagsError> {
         self.read().and_then(|(ctags_path, contents)| {
-            CtagItem::parse(ctags_path, &contents).map_err(|e| e.into())
+            CtagItem::parse(&self.app_root, ctags_path, &contents).map_err(|e| e.into())
         })
     }
 
