@@ -17,6 +17,7 @@ pub struct TagsReader {
 }
 
 /// A struct capturing possible failures when attempting to find and read tags files
+#[derive(Debug)]
 pub enum ReadCtagsError {
     /// No tags file found
     ///
@@ -69,13 +70,14 @@ fn git_path() -> Option<PathBuf> {
     }
 }
 
-fn cwd_tags_paths(cwd: &PathBuf) -> Vec<PathBuf> {
+fn cwd_tags_paths(cwd: PathBuf) -> Vec<PathBuf> {
     vec![cwd.join("tags"), cwd.join("tmp/tags")]
 }
 
 impl Default for TagsReader {
     fn default() -> Self {
         let mut filenames = vec![];
+
         let mut app_root = PathBuf::new();
 
         if let Ok(current_dir) = current_dir() {
@@ -83,10 +85,10 @@ impl Default for TagsReader {
                 if app_git_path == PathBuf::from(".git") {
                     app_root = current_dir;
                     filenames.push(app_root.join(app_git_path).join("tags"));
-                    filenames.extend(cwd_tags_paths(&app_root));
+                    filenames.extend(cwd_tags_paths(app_root.to_path_buf()));
                 } else {
                     app_root = app_git_path.join("..");
-                    filenames.extend(cwd_tags_paths(&current_dir));
+                    filenames.extend(cwd_tags_paths(current_dir));
                     filenames.push(app_git_path.join("tags"));
                     filenames.push(app_git_path.join("../tags"));
                     filenames.push(app_git_path.join("../tmp/tags"));

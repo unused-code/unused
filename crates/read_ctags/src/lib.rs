@@ -29,6 +29,7 @@ mod token_kind;
 
 pub use self::ctag_item::*;
 pub use self::language::*;
+pub use self::tag_program::TagProgram;
 pub use self::tags_file::*;
 pub use self::tags_reader::*;
 pub use self::token_kind::*;
