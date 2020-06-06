@@ -1,8 +1,8 @@
 use super::language::Language;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// TokenKind is an enum which represents different types of tokens
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize)]
+#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum TokenKind {
     Class,
@@ -86,6 +86,116 @@ pub enum TokenKind {
     Unknown(char),
 }
 
+static LOOKUP: [(Language, char, TokenKind); 107] = [
+    (Language::CSS, 'c', TokenKind::Class),
+    (Language::CSS, 'i', TokenKind::Id),
+    (Language::CSS, 's', TokenKind::Selector),
+    (Language::Elixir, 'a', TokenKind::Macro),
+    (Language::Elixir, 'c', TokenKind::Callback),
+    (Language::Elixir, 'd', TokenKind::Delegate),
+    (Language::Elixir, 'e', TokenKind::Exception),
+    (Language::Elixir, 'f', TokenKind::Function),
+    (Language::Elixir, 'g', TokenKind::Guard),
+    (Language::Elixir, 'i', TokenKind::Implementation),
+    (Language::Elixir, 'm', TokenKind::Module),
+    (Language::Elixir, 'o', TokenKind::Operator),
+    (Language::Elixir, 'p', TokenKind::Protocol),
+    (Language::Elixir, 'r', TokenKind::Record),
+    (Language::Elixir, 't', TokenKind::Test),
+    (Language::Elixir, 'y', TokenKind::Type),
+    (Language::Elm, 'a', TokenKind::Alias),
+    (Language::Elm, 'c', TokenKind::Constructor),
+    (Language::Elm, 'f', TokenKind::Function),
+    (Language::Elm, 'm', TokenKind::Module),
+    (Language::Elm, 'n', TokenKind::Namespace),
+    (Language::Elm, 'p', TokenKind::Port),
+    (Language::Elm, 't', TokenKind::Type),
+    (Language::HTML, 'C', TokenKind::Stylesheet),
+    (Language::HTML, 'I', TokenKind::Id),
+    (Language::HTML, 'J', TokenKind::Script),
+    (Language::HTML, 'a', TokenKind::Anchor),
+    (Language::HTML, 'c', TokenKind::Class),
+    (Language::HTML, 'h', TokenKind::Heading1),
+    (Language::HTML, 'i', TokenKind::Heading2),
+    (Language::HTML, 'j', TokenKind::Heading3),
+    (Language::JSON, 'a', TokenKind::Array),
+    (Language::JSON, 'b', TokenKind::Boolean),
+    (Language::JSON, 'n', TokenKind::Number),
+    (Language::JSON, 'o', TokenKind::Object),
+    (Language::JSON, 's', TokenKind::String),
+    (Language::JSON, 'z', TokenKind::Null),
+    (Language::JavaScript, 'C', TokenKind::Constant),
+    (Language::JavaScript, 'G', TokenKind::Getter),
+    (Language::JavaScript, 'S', TokenKind::Setter),
+    (Language::JavaScript, 'c', TokenKind::Class),
+    (Language::JavaScript, 'f', TokenKind::Function),
+    (Language::JavaScript, 'g', TokenKind::Generator),
+    (Language::JavaScript, 'm', TokenKind::Method),
+    (Language::JavaScript, 'p', TokenKind::Property),
+    (Language::JavaScript, 'v', TokenKind::Variable),
+    (Language::Markdown, 'S', TokenKind::Subsection),
+    (Language::Markdown, 'T', TokenKind::L4Subsection),
+    (Language::Markdown, 'c', TokenKind::Chapter),
+    (Language::Markdown, 's', TokenKind::Section),
+    (Language::Markdown, 't', TokenKind::SubSubsection),
+    (Language::Markdown, 'u', TokenKind::L5Subsection),
+    (Language::Python, 'I', TokenKind::Namespace),
+    (Language::Python, 'c', TokenKind::Class),
+    (Language::Python, 'f', TokenKind::Function),
+    (Language::Python, 'i', TokenKind::Module),
+    (Language::Python, 'l', TokenKind::Local),
+    (Language::Python, 'm', TokenKind::Member),
+    (Language::Python, 'v', TokenKind::Variable),
+    (Language::Python, 'x', TokenKind::Unknown('x')),
+    (Language::Python, 'z', TokenKind::Parameter),
+    (Language::Ruby, 'S', TokenKind::SingletonMethod),
+    (Language::Ruby, 'c', TokenKind::Class),
+    (Language::Ruby, 'f', TokenKind::Method),
+    (Language::Ruby, 'm', TokenKind::Module),
+    (Language::Ruby, 'd', TokenKind::RSpecDescribe),
+    (Language::Rust, 'M', TokenKind::Macro),
+    (Language::Rust, 'P', TokenKind::Method),
+    (Language::Rust, 'c', TokenKind::Implementation),
+    (Language::Rust, 'e', TokenKind::Enumerator),
+    (Language::Rust, 'f', TokenKind::Function),
+    (Language::Rust, 'g', TokenKind::Enum),
+    (Language::Rust, 'i', TokenKind::Interface),
+    (Language::Rust, 'm', TokenKind::Field),
+    (Language::Rust, 'n', TokenKind::Module),
+    (Language::Rust, 's', TokenKind::Struct),
+    (Language::Rust, 't', TokenKind::Typedef),
+    (Language::Rust, 'v', TokenKind::Variable),
+    (Language::SCSS, 'P', TokenKind::Placeholder),
+    (Language::SCSS, 'c', TokenKind::Class),
+    (Language::SCSS, 'f', TokenKind::Function),
+    (Language::SCSS, 'i', TokenKind::Id),
+    (Language::SCSS, 'm', TokenKind::Mixin),
+    (Language::SCSS, 'v', TokenKind::Variable),
+    (Language::SCSS, 'z', TokenKind::Parameter),
+    (Language::Sh, 'a', TokenKind::Alias),
+    (Language::Sh, 'f', TokenKind::Function),
+    (Language::Sh, 'h', TokenKind::Heredoc),
+    (Language::Sh, 's', TokenKind::Script),
+    (Language::TypeScript, 'C', TokenKind::Constant),
+    (Language::TypeScript, 'G', TokenKind::Generator),
+    (Language::TypeScript, 'a', TokenKind::Alias),
+    (Language::TypeScript, 'c', TokenKind::Class),
+    (Language::TypeScript, 'e', TokenKind::Enumerator),
+    (Language::TypeScript, 'f', TokenKind::Function),
+    (Language::TypeScript, 'g', TokenKind::Enum),
+    (Language::TypeScript, 'i', TokenKind::Interface),
+    (Language::TypeScript, 'l', TokenKind::Local),
+    (Language::TypeScript, 'm', TokenKind::Method),
+    (Language::TypeScript, 'n', TokenKind::Namespace),
+    (Language::TypeScript, 'p', TokenKind::Property),
+    (Language::TypeScript, 'v', TokenKind::Variable),
+    (Language::TypeScript, 'z', TokenKind::Parameter),
+    (Language::XML, 'i', TokenKind::Id),
+    (Language::XML, 'n', TokenKind::NSPrefix),
+    (Language::XML, 'r', TokenKind::Root),
+    (Language::SVG, 'd', TokenKind::Def),
+];
+
 impl TokenKind {
     /// Construct a TokenKind given a language (or lack thereof) with a character
     ///
@@ -93,118 +203,48 @@ impl TokenKind {
     ///   $ ctags --list-kinds-full
     ///
     /// This list is not comprehensive in that it is based off of the languages accounted for.
-    pub fn from_ctag(language: Option<Language>, char: char) -> Self {
-        match (language, char) {
-            (Some(Language::CSS), 'c') => TokenKind::Class,
-            (Some(Language::CSS), 'i') => TokenKind::Id,
-            (Some(Language::CSS), 's') => TokenKind::Selector,
-            (Some(Language::Elixir), 'a') => TokenKind::Macro,
-            (Some(Language::Elixir), 'c') => TokenKind::Callback,
-            (Some(Language::Elixir), 'd') => TokenKind::Delegate,
-            (Some(Language::Elixir), 'e') => TokenKind::Exception,
-            (Some(Language::Elixir), 'f') => TokenKind::Function,
-            (Some(Language::Elixir), 'g') => TokenKind::Guard,
-            (Some(Language::Elixir), 'i') => TokenKind::Implementation,
-            (Some(Language::Elixir), 'm') => TokenKind::Module,
-            (Some(Language::Elixir), 'o') => TokenKind::Operator,
-            (Some(Language::Elixir), 'p') => TokenKind::Protocol,
-            (Some(Language::Elixir), 'r') => TokenKind::Record,
-            (Some(Language::Elixir), 't') => TokenKind::Test,
-            (Some(Language::Elixir), 'y') => TokenKind::Type,
-            (Some(Language::Elm), 'a') => TokenKind::Alias,
-            (Some(Language::Elm), 'c') => TokenKind::Constructor,
-            (Some(Language::Elm), 'f') => TokenKind::Function,
-            (Some(Language::Elm), 'm') => TokenKind::Module,
-            (Some(Language::Elm), 'n') => TokenKind::Namespace,
-            (Some(Language::Elm), 'p') => TokenKind::Port,
-            (Some(Language::Elm), 't') => TokenKind::Type,
-            (Some(Language::HTML), 'C') => TokenKind::Stylesheet,
-            (Some(Language::HTML), 'I') => TokenKind::Id,
-            (Some(Language::HTML), 'J') => TokenKind::Script,
-            (Some(Language::HTML), 'a') => TokenKind::Anchor,
-            (Some(Language::HTML), 'c') => TokenKind::Class,
-            (Some(Language::HTML), 'h') => TokenKind::Heading1,
-            (Some(Language::HTML), 'i') => TokenKind::Heading2,
-            (Some(Language::HTML), 'j') => TokenKind::Heading3,
-            (Some(Language::JSON), 'a') => TokenKind::Array,
-            (Some(Language::JSON), 'b') => TokenKind::Boolean,
-            (Some(Language::JSON), 'n') => TokenKind::Number,
-            (Some(Language::JSON), 'o') => TokenKind::Object,
-            (Some(Language::JSON), 's') => TokenKind::String,
-            (Some(Language::JSON), 'z') => TokenKind::Null,
-            (Some(Language::JavaScript), 'C') => TokenKind::Constant,
-            (Some(Language::JavaScript), 'G') => TokenKind::Getter,
-            (Some(Language::JavaScript), 'S') => TokenKind::Setter,
-            (Some(Language::JavaScript), 'c') => TokenKind::Class,
-            (Some(Language::JavaScript), 'f') => TokenKind::Function,
-            (Some(Language::JavaScript), 'g') => TokenKind::Generator,
-            (Some(Language::JavaScript), 'm') => TokenKind::Method,
-            (Some(Language::JavaScript), 'p') => TokenKind::Property,
-            (Some(Language::JavaScript), 'v') => TokenKind::Variable,
-            (Some(Language::Markdown), 'S') => TokenKind::Subsection,
-            (Some(Language::Markdown), 'T') => TokenKind::L4Subsection,
-            (Some(Language::Markdown), 'c') => TokenKind::Chapter,
-            (Some(Language::Markdown), 's') => TokenKind::Section,
-            (Some(Language::Markdown), 't') => TokenKind::SubSubsection,
-            (Some(Language::Markdown), 'u') => TokenKind::L5Subsection,
-            (Some(Language::Python), 'I') => TokenKind::Namespace,
-            (Some(Language::Python), 'c') => TokenKind::Class,
-            (Some(Language::Python), 'f') => TokenKind::Function,
-            (Some(Language::Python), 'i') => TokenKind::Module,
-            (Some(Language::Python), 'l') => TokenKind::Local,
-            (Some(Language::Python), 'm') => TokenKind::Member,
-            (Some(Language::Python), 'v') => TokenKind::Variable,
-            (Some(Language::Python), 'x') => TokenKind::Unknown('x'),
-            (Some(Language::Python), 'z') => TokenKind::Parameter,
-            (Some(Language::Ruby), 'S') => TokenKind::SingletonMethod,
-            (Some(Language::Ruby), 'c') => TokenKind::Class,
-            (Some(Language::Ruby), 'f') => TokenKind::Method,
-            (Some(Language::Ruby), 'm') => TokenKind::Module,
-            (Some(Language::Ruby), 'd') => TokenKind::RSpecDescribe,
-            (Some(Language::Rust), 'M') => TokenKind::Macro,
-            (Some(Language::Rust), 'P') => TokenKind::Method,
-            (Some(Language::Rust), 'c') => TokenKind::Implementation,
-            (Some(Language::Rust), 'e') => TokenKind::Enumerator,
-            (Some(Language::Rust), 'f') => TokenKind::Function,
-            (Some(Language::Rust), 'g') => TokenKind::Enum,
-            (Some(Language::Rust), 'i') => TokenKind::Interface,
-            (Some(Language::Rust), 'm') => TokenKind::Field,
-            (Some(Language::Rust), 'n') => TokenKind::Module,
-            (Some(Language::Rust), 's') => TokenKind::Struct,
-            (Some(Language::Rust), 't') => TokenKind::Typedef,
-            (Some(Language::Rust), 'v') => TokenKind::Variable,
-            (Some(Language::SCSS), 'P') => TokenKind::Placeholder,
-            (Some(Language::SCSS), 'c') => TokenKind::Class,
-            (Some(Language::SCSS), 'f') => TokenKind::Function,
-            (Some(Language::SCSS), 'i') => TokenKind::Id,
-            (Some(Language::SCSS), 'm') => TokenKind::Mixin,
-            (Some(Language::SCSS), 'v') => TokenKind::Variable,
-            (Some(Language::SCSS), 'z') => TokenKind::Parameter,
-            (Some(Language::Sh), 'a') => TokenKind::Alias,
-            (Some(Language::Sh), 'f') => TokenKind::Function,
-            (Some(Language::Sh), 'h') => TokenKind::Heredoc,
-            (Some(Language::Sh), 's') => TokenKind::Script,
-            (Some(Language::TypeScript), 'C') => TokenKind::Constant,
-            (Some(Language::TypeScript), 'G') => TokenKind::Generator,
-            (Some(Language::TypeScript), 'a') => TokenKind::Alias,
-            (Some(Language::TypeScript), 'c') => TokenKind::Class,
-            (Some(Language::TypeScript), 'e') => TokenKind::Enumerator,
-            (Some(Language::TypeScript), 'f') => TokenKind::Function,
-            (Some(Language::TypeScript), 'g') => TokenKind::Enum,
-            (Some(Language::TypeScript), 'i') => TokenKind::Interface,
-            (Some(Language::TypeScript), 'l') => TokenKind::Local,
-            (Some(Language::TypeScript), 'm') => TokenKind::Method,
-            (Some(Language::TypeScript), 'n') => TokenKind::Namespace,
-            (Some(Language::TypeScript), 'p') => TokenKind::Property,
-            (Some(Language::TypeScript), 'v') => TokenKind::Variable,
-            (Some(Language::TypeScript), 'z') => TokenKind::Parameter,
-            (Some(Language::XML), 'i') => TokenKind::Id,
-            (Some(Language::XML), 'n') => TokenKind::NSPrefix,
-            (Some(Language::XML), 'r') => TokenKind::Root,
-            (Some(Language::SVG), 'd') => TokenKind::Def,
-            (Some(Language::SVG), v) => Self::from_ctag(Some(Language::XML), v),
-            (Some(l), c) => TokenKind::MissingLanguageToken(l, c),
-            (None, c) => TokenKind::Unknown(c),
+    pub fn from_ctag(lang: Option<Language>, identifier: char) -> TokenKind {
+        LOOKUP
+            .iter()
+            .filter(|(l, c, _)| Some(*l) == lang && *c == identifier)
+            .nth(0)
+            .map(|(_, _, t)| t.clone())
+            .unwrap_or(match lang {
+                Some(Language::SVG) => Self::from_ctag(Some(Language::XML), identifier),
+                Some(l) => TokenKind::MissingLanguageToken(l, identifier),
+                None => TokenKind::Unknown(identifier),
+            })
+    }
+
+    /// Calculate the character given an optional language and kind
+    pub fn to_token_char(&self, lang: Option<Language>) -> char {
+        match *self {
+            TokenKind::Unknown(c) => c,
+            TokenKind::MissingLanguageToken(_, c) => c,
+            _ => LOOKUP
+                .iter()
+                .filter(|(l, _, t)| Some(*l) == lang && t == self)
+                .nth(0)
+                .map(|(_, c, _)| c.clone())
+                .unwrap_or(match lang {
+                    Some(Language::SVG) => self.to_token_char(Some(Language::XML)),
+                    _ => ' ',
+                }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bidirectional_support() {
+        for c in "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz".chars() {
+            for l in Language::all() {
+                assert_eq!(c, TokenKind::from_ctag(Some(l), c).to_token_char(Some(l)));
+            }
+            assert_eq!(c, TokenKind::from_ctag(None, c).to_token_char(None));
         }
     }
 }

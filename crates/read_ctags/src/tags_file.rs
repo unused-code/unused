@@ -1,6 +1,5 @@
-use super::{ctag_item::CtagItem, tag_program::TagProgram};
+use super::{tag_program::TagProgram, tags::Tags};
 use serde::Serialize;
-use std::collections::HashSet;
 use std::path::PathBuf;
 
 /// Parsed tags outcome
@@ -11,5 +10,5 @@ pub struct TagsFile {
     /// Tags file program metadata
     pub program: TagProgram,
     /// Tags found in the tags file
-    pub tags: HashSet<CtagItem>,
+    pub tags: Tags,
 }

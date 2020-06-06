@@ -2,6 +2,7 @@ mod internal;
 use super::ctag_item::CtagItem;
 use super::language::Language;
 use super::tag_program::TagProgram;
+use super::tags::Tags;
 use super::token_kind::TokenKind;
 use nom::{
     branch::alt,
@@ -23,12 +24,12 @@ enum ParsedField<'a> {
     ParsedField(&'a str, &'a str),
 }
 
-pub fn parse(input: &str) -> IResult<&str, (TagProgram, HashSet<CtagItem>)> {
+pub fn parse(input: &str) -> IResult<&str, (TagProgram, Tags)> {
     tuple((
         map(opt(internal::tag_metadata), |v| {
             v.unwrap_or(TagProgram::default())
         }),
-        tags_body,
+        map(tags_body, Tags::new),
     ))(input)
 }
 
@@ -137,7 +138,7 @@ fn build_kind_and_fields<'a>(
 
 #[test]
 fn parses_without_metadata() {
-    let result: HashSet<CtagItem> = vec![CtagItem {
+    let result: Tags = vec![CtagItem {
         name: String::from("withInfo"),
         file_path: PathBuf::from("path/to/file.rb"),
         address: String::from("45"),

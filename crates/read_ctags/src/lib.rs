@@ -23,12 +23,14 @@ mod ctag_item;
 mod language;
 mod parser;
 mod tag_program;
+mod tags;
 mod tags_file;
 mod tags_reader;
 mod token_kind;
 
 pub use self::ctag_item::*;
 pub use self::language::*;
+pub use self::tags::*;
 pub use self::tags_file::*;
 pub use self::tags_reader::*;
 pub use self::token_kind::*;

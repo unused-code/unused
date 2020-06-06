@@ -16,6 +16,7 @@ pub struct TagsReader {
 }
 
 /// A struct capturing possible failures when attempting to find and read tags files
+#[derive(Debug)]
 pub enum ReadCtagsError {
     /// No tags file found
     ///

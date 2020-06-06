@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use read_ctags::{CtagItem, Language, ReadCtagsError, TagsReader};
+use read_ctags::{CtagItem, Language, ReadCtagsError, Tags, TagsReader};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -10,14 +10,14 @@ pub struct Token {
     /// The token value
     pub token: String,
     /// The set of `CtagItem`s that compose the token
-    pub definitions: HashSet<CtagItem>,
+    pub definitions: Tags,
     /// The paths where a token is defined
     pub defined_paths: HashSet<PathBuf>,
 }
 
 impl Token {
     /// Construct a token based on the value and set of definitions
-    pub fn new(token: String, definitions: HashSet<CtagItem>) -> Self {
+    pub fn new(token: String, definitions: Tags) -> Self {
         let defined_paths = definitions
             .iter()
             .map(|v| v.file_path.clone())
@@ -58,7 +58,7 @@ impl Token {
         self.definitions.iter().all(|ct| check(ct))
     }
 
-    fn build_tokens_from_outcome(outcome: HashSet<CtagItem>) -> Vec<Token> {
+    fn build_tokens_from_outcome(outcome: Tags) -> Vec<Token> {
         outcome
             .into_iter()
             .sorted_by_key(|ct| Self::strip_prepended_punctuation(&ct.name))
@@ -104,7 +104,7 @@ mod tests {
             vec![instance_method_spec, instance_method]
                 .iter()
                 .cloned()
-                .collect(),
+                .collect::<Tags>(),
         );
 
         assert_eq!(tokens.len(), 1);
