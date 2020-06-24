@@ -2,7 +2,7 @@ use super::language::Language;
 use serde::{Deserialize, Serialize};
 
 /// TokenKind is an enum which represents different types of tokens
-#[derive(Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum TokenKind {
     Class,
@@ -208,7 +208,7 @@ impl TokenKind {
             .iter()
             .filter(|(l, c, _)| Some(*l) == lang && *c == identifier)
             .nth(0)
-            .map(|(_, _, t)| t.clone())
+            .map(|(_, _, t)| *t)
             .unwrap_or(match lang {
                 Some(Language::SVG) => Self::from_ctag(Some(Language::XML), identifier),
                 Some(l) => TokenKind::MissingLanguageToken(l, identifier),
@@ -225,7 +225,7 @@ impl TokenKind {
                 .iter()
                 .filter(|(l, _, t)| Some(*l) == lang && t == self)
                 .nth(0)
-                .map(|(_, c, _)| c.clone())
+                .map(|(_, c, _)| *c)
                 .unwrap_or(match lang {
                     Some(Language::SVG) => self.to_token_char(Some(Language::XML)),
                     _ => ' ',

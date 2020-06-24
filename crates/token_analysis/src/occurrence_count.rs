@@ -72,13 +72,12 @@ impl FileTypeCounts {
         project_configuration: &ProjectConfiguration,
         token_search_result: &TokenSearchResult,
     ) -> Self {
-        let results = token_search_result.occurrences.clone();
         let mut app: HashMap<&PathBuf, usize> = HashMap::new();
         let mut config: HashMap<&PathBuf, usize> = HashMap::new();
         let mut test: HashMap<&PathBuf, usize> = HashMap::new();
         let mut unknown: HashMap<&PathBuf, usize> = HashMap::new();
 
-        for (k, v) in &results {
+        for (k, v) in &token_search_result.occurrences {
             if Self::is_application_file(project_configuration, k) {
                 app.insert(k, *v);
             }

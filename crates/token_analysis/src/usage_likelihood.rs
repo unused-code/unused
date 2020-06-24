@@ -12,7 +12,7 @@ pub struct UsageLikelihood {
     pub reason: String,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
 pub enum UsageLikelihoodStatus {
     High,
     Medium,

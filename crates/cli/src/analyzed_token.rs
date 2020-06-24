@@ -17,7 +17,7 @@ impl From<&TokenUsage> for AnalyzedToken {
         AnalyzedToken {
             token: usage.result.token.token.to_string(),
             first_path: usage.result.token.first_path().to_path_buf(),
-            likelihood_status: usage.usage_likelihood.status.clone(),
+            likelihood_status: usage.usage_likelihood.status,
             likelihood_reason: usage.usage_likelihood.reason.clone(),
             files: usage
                 .result

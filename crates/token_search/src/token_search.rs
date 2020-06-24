@@ -145,10 +145,9 @@ impl TokenSearchResults {
 
     /// Generate results based on provided search config
     pub fn generate_with_config(config: &TokenSearchConfig) -> Self {
-        let filtered_results: Vec<Token> = config
+        let filtered_results: Vec<_> = config
             .tokens
-            .clone()
-            .into_iter()
+            .iter()
             .filter(|t| config.filter_token(t) && config.filter_language(t))
             .collect();
 
@@ -198,7 +197,6 @@ impl TokenSearchResults {
             .collect();
 
         std::thread::spawn(move || drop(ac));
-        std::thread::spawn(move || drop(filtered_results));
 
         TokenSearchResults(final_results)
     }

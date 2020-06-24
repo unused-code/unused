@@ -35,8 +35,8 @@ impl ProjectConfigurations {
         include_str!("default_config.yml").to_string()
     }
 
-    pub fn get(&self, name: &str) -> Option<ProjectConfiguration> {
-        self.configs.get(name).map(|v| v.clone())
+    pub fn get(&self, name: &str) -> Option<&ProjectConfiguration> {
+        self.configs.get(name)
     }
 
     pub fn parse(contents: &str) -> Self {
@@ -168,7 +168,7 @@ impl ProjectConfigurations {
             Yaml::String(val) => Self::parse_single_assertion(key, val),
             Yaml::Array(vals) => Self::parse_multiple_assertions(
                 key,
-                vals.into_iter()
+                vals.iter()
                     .filter_map(|v| v.clone().into_string())
                     .collect(),
             ),

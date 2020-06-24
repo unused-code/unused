@@ -20,7 +20,7 @@ impl Token {
     pub fn new(token: String, definitions: Tags) -> Self {
         let defined_paths = definitions
             .iter()
-            .map(|v| v.file_path.clone())
+            .map(|v| v.file_path.to_path_buf())
             .collect::<HashSet<_>>();
 
         Self {
