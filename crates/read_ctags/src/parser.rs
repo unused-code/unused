@@ -105,7 +105,10 @@ fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
         input,
         CtagItem {
             name: name.to_string(),
-            file_path,
+            file_path: file_path
+                .strip_prefix("../")
+                .unwrap_or(&file_path)
+                .to_path_buf(),
             address,
             language,
             tags,
@@ -172,6 +175,24 @@ fn parses_fields() {
 fn parses_item_lines() {
     assert_eq!(
         ctag_item_parser("withInfo\tpath/to/file.rb\t45"),
+        Ok((
+            "",
+            CtagItem {
+                name: String::from("withInfo"),
+                file_path: PathBuf::from("path/to/file.rb"),
+                address: String::from("45"),
+                language: Some(Language::Ruby),
+                tags: BTreeMap::new(),
+                kind: TokenKind::Undefined
+            }
+        ))
+    );
+}
+
+#[test]
+fn handles_paths_when_tags_are_relative() {
+    assert_eq!(
+        ctag_item_parser("withInfo\t../path/to/file.rb\t45"),
         Ok((
             "",
             CtagItem {
