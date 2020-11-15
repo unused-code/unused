@@ -13,5 +13,5 @@ token_analysis = { path = "../../crates/token_analysis/" }
 project_configuration = { path = "../../crates/project_configuration/" }
 colored = "1.9.3"
 itertools = "0.9"
-dirs = "2.0"
+dirs-next = "2.0"
 structopt = "0.3"

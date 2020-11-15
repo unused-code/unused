@@ -1,4 +1,4 @@
-use dirs;
+use dirs_next;
 use project_configuration::ProjectConfigurations;
 use std::fs;
 use std::io;
@@ -12,7 +12,8 @@ pub fn load_and_parse_config() -> ProjectConfigurations {
 }
 
 fn file_path_in_home_dir(file_name: &str) -> Option<String> {
-    dirs::home_dir().and_then(|ref p| Path::new(p).join(file_name).to_str().map(|v| v.to_owned()))
+    dirs_next::home_dir()
+        .and_then(|ref p| Path::new(p).join(file_name).to_str().map(|v| v.to_owned()))
 }
 
 fn read_file(filename: &str) -> Result<String, io::Error> {

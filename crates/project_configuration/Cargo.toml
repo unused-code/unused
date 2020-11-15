@@ -9,7 +9,6 @@ license = "MIT"
 
 [dependencies]
 yaml-rust = "0.4"
-dirs = "2.0"
 token_search = { path = "../../crates/token_search" }
 
 [dev-dependencies]
