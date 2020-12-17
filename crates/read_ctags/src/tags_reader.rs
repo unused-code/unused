@@ -3,8 +3,9 @@ use std::convert::From;
 use std::default::Default;
 use std::env::current_dir;
 use std::fmt::{Display, Formatter};
-use std::fs;
+use std::fs::File;
 use std::io;
+use std::io::prelude::*;
 use std::io::Error;
 use std::path::PathBuf;
 use std::process::Command;
@@ -107,7 +108,7 @@ impl TagsReader {
         Self::first_success(
             &self.filenames,
             Error::new(io::ErrorKind::Other, "No file provided"),
-            fs::read_to_string,
+            read_to_string_lossy,
         )
         .map_err(|e| ReadCtagsError::NoCtagsFile(self.filenames.clone(), e))
     }
@@ -126,4 +127,11 @@ impl TagsReader {
         }
         outcome
     }
+}
+
+fn read_to_string_lossy<P: AsRef<std::path::Path>>(path: P) -> std::io::Result<String> {
+    let mut file = File::open(path)?;
+    let mut buf = vec![];
+    file.read_to_end(&mut buf)?;
+    Ok(String::from_utf8_lossy(&buf).into_owned())
 }
