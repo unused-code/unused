@@ -1,7 +1,7 @@
 # Unused
 
-![CI](https://github.com/unused-code/unused_rs/workflows/CI/badge.svg)
-![Security audit](https://github.com/unused-code/unused_rs/workflows/Security%20audit/badge.svg)
+![CI](https://github.com/unused-code/unused/workflows/CI/badge.svg)
+![Security audit](https://github.com/unused-code/unused/workflows/Security%20audit/badge.svg)
 
 Unused identifies unused code in Rails, Phoenix, and other types of
 applications, improving developer productivity
