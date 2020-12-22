@@ -36,6 +36,21 @@ brew update
 brew upgrade unused
 ```
 
+### Nix
+
+There is a [Nix] expression [available in nixpkgs].
+
+There are many ways to run `unused` with Nix, but the simplest is:
+
+```sh
+nix run -f https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.zip unused -c unused --help
+```
+
+Everything after `-c` is treated as a command and its arguments.
+
+[nix]: https://nixos.org
+[available in nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/misc/unused/default.nix
+
 ## Prerequisites
 
 It is strongly recommended you install [Universal Ctags] to generate tags
