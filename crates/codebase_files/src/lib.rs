@@ -1,41 +1,53 @@
-use std::path::PathBuf;
-use std::process::{Command, Output};
+use ignore::{WalkBuilder, WalkState};
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
+#[derive(Debug, PartialEq)]
 pub struct CodebaseFiles {
     pub paths: Vec<PathBuf>,
 }
 
 impl CodebaseFiles {
     pub fn all() -> CodebaseFiles {
-        let output = Command::new("git").arg("ls-files").output();
-        let mut paths = Self::process_ls_files(output);
-        paths.extend(Self::process_ls_files(
-            Command::new("git")
-                .arg("ls-files")
-                .arg("--others")
-                .arg("--exclude-standard")
-                .output(),
-        ));
+        let mut builder = WalkBuilder::new("./");
+        builder.hidden(false);
+        builder.filter_entry(|entry| entry.path() != Path::new("./.git"));
 
-        paths.sort();
-        paths.dedup();
-        CodebaseFiles {
-            paths: paths.into_iter().map(PathBuf::from).collect(),
-        }
-    }
+        let results = Arc::new(Mutex::new(vec![]));
 
-    fn process_ls_files<T>(output: Result<Output, T>) -> Vec<String> {
-        match output {
-            Ok(o) => {
-                if o.status.success() {
-                    std::str::from_utf8(&o.stdout).map_or(vec![], |v| {
-                        v.lines().map(|k| k.to_string()).collect::<Vec<String>>()
-                    })
-                } else {
-                    vec![]
+        builder.build_parallel().run(|| {
+            Box::new(|result| {
+                if let Ok(entry) = result {
+                    if entry.file_type().map(|ft| ft.is_file()).unwrap_or(false) {
+                        let mut results = results.lock().unwrap();
+                        let path = entry.path().strip_prefix("./").unwrap_or(entry.path());
+
+                        results.push(path.to_path_buf());
+                    }
                 }
+
+                WalkState::Continue
+            })
+        });
+
+        let mut paths = results.lock().unwrap().to_vec();
+        paths.sort();
+
+        CodebaseFiles { paths }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strips_prefix() {
+        assert_eq!(
+            CodebaseFiles::all(),
+            CodebaseFiles {
+                paths: vec![PathBuf::from("Cargo.toml"), PathBuf::from("src/lib.rs")]
             }
-            _ => vec![],
-        }
+        );
     }
 }

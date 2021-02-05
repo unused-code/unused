@@ -89,6 +89,9 @@ impl Default for TagsReader {
                     filenames.push(app_git_path.join("../tags"));
                     filenames.push(app_git_path.join("../tmp/tags"));
                 }
+            } else {
+                filenames.push(current_dir.join("tags"));
+                filenames.push(current_dir.join("tmp/tags"));
             }
         }
 
