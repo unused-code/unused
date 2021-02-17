@@ -49,6 +49,14 @@ nix-shell -I nixpkgs=https://github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.t
 [nix]: https://nixos.org
 [available in nixpkgs]: https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/misc/unused/default.nix
 
+### Linux
+
+Precompiled binaries are available for [the latest release].
+
+Download the linux-musl binary, and move the binary to somewhere within your `$PATH`.
+
+[the latest release]: https://github.com/unused-code/unused/releases/latest
+
 ## Prerequisites
 
 It is strongly recommended you install [Universal Ctags] to generate tags
