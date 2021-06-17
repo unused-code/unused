@@ -29,11 +29,36 @@ brew install unused
 
 This will install `unused` and its corresponding dependencies.
 
+#### Updating
+
 To update, run:
 
 ```sh
 brew update
 brew upgrade unused
+```
+
+#### Caveats (Apple M1 Installation)
+
+By default, `unused` leverages a different memory allocator called [mimalloc].
+For my local benchmarks, it speeds up execution by a significant amount (which
+is documented in the [commit introducing mimalloc]), but currently runs into
+sporadic issues on Apple M1 devices.
+
+[mimalloc]: https://github.com/microsoft/mimalloc
+[commit introducing mimalloc]: https://github.com/unused-code/unused/commit/a206e557af47109ae7f907b89649da8a39fed932
+
+If you run into [issues with segmentation
+faults](https://github.com/unused-code/unused/issues/34), consider reinstalling
+unused with the stock Rust allocator.
+
+To refresh your install:
+
+```sh
+brew uninstall unused
+brew untap unused-code/formulae
+brew tap unused-code/formulae
+brew install unused --without-mimalloc
 ```
 
 ### Nix
