@@ -65,7 +65,7 @@ fn usage_summary(tokens_count: usize, files_count: usize, cli_config: &CliConfig
         cli_config.usage_likelihood_filter().join(", ").cyan()
     );
     println!(
-        "   Configuration setting: {}",
+        "   Project type configuration: {}",
         cli_config.configuration_name().cyan()
     );
     println!("");
