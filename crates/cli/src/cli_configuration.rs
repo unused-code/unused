@@ -10,18 +10,18 @@ use token_analysis::{
 };
 use token_search::{LanguageRestriction, Token, TokenSearchConfig, TokenSearchResults};
 
-pub struct CliConfiguration {
-    flags: Flags,
+pub struct CliConfiguration<'a> {
+    flags: &'a Flags,
     token_search_config: TokenSearchConfig,
     analysis_filter: AnalysisFilter,
     project_configuration: ProjectConfiguration,
     outcome: TokenUsageResults,
 }
 
-impl CliConfiguration {
-    pub fn new(flags: Flags, tokens: Vec<Token>) -> Self {
-        let token_search_config = build_token_search_config(&flags, tokens);
-        let analysis_filter = build_analysis_filter(&flags);
+impl<'a> CliConfiguration<'a> {
+    pub fn new(flags: &'a Flags, tokens: Vec<Token>) -> Self {
+        let token_search_config = build_token_search_config(flags, tokens);
+        let analysis_filter = build_analysis_filter(flags);
         let results = TokenSearchResults::generate_with_config(&token_search_config);
         let project_configuration = load_and_parse_config()
             .best_match(&results)
