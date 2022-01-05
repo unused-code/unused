@@ -71,6 +71,10 @@ pub struct Flags {
     #[structopt(long, use_delimiter = true)]
     pub ignore: Vec<String>,
 
+    /// Return an exit status of 1 if any tokens are found
+    #[structopt(long)]
+    pub harsh: bool,
+
     #[structopt(subcommand)]
     pub cmd: Option<Command>,
 }

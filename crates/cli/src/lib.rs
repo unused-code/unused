@@ -11,6 +11,7 @@ use colored::*;
 use doctor::Doctor;
 use flags::{Flags, Format};
 use project_configuration::ProjectConfigurations;
+use std::process;
 use structopt::StructOpt;
 use token_search::Token;
 
@@ -29,7 +30,16 @@ pub fn run() {
         Some(flags::Command::Doctor) => Doctor::new().render(),
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
         _ => match Token::all() {
-            Ok((_, results)) => CliConfiguration::new(&flags, results).render(),
+            Ok((_, results)) => {
+                if results.is_empty() {
+                    CliConfiguration::new(&flags, vec![]).render()
+                } else {
+                    CliConfiguration::new(&flags, results).render();
+                    if flags.harsh {
+                        process::exit(1);
+                    }
+                }
+            }
             Err(e) => error_message::failed_token_parse(e),
         },
     }
