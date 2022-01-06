@@ -1,4 +1,5 @@
 use super::value_assertion::{Assertion, AssertionConflict};
+use std::default::Default;
 use std::path::Path;
 use token_search::{TokenSearchResult, TokenSearchResults};
 
@@ -87,8 +88,8 @@ impl LowLikelihoodConfig {
     }
 }
 
-impl ProjectConfiguration {
-    pub fn default() -> Self {
+impl Default for ProjectConfiguration {
+    fn default() -> Self {
         ProjectConfiguration {
             name: "Default".to_string(),
             application_file: vec![PathPrefix::new("src/"), PathPrefix::new("lib/")],
@@ -98,7 +99,9 @@ impl ProjectConfiguration {
             matches_if: vec![],
         }
     }
+}
 
+impl ProjectConfiguration {
     pub fn low_likelihood_match(
         &self,
         token_search_result: &TokenSearchResult,
