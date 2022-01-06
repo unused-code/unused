@@ -40,7 +40,10 @@ pub fn run() {
                     }
                 }
             }
-            Err(e) => error_message::failed_token_parse(e),
+            Err(e) => {
+                error_message::failed_token_parse(e);
+                process::exit(1)
+            }
         },
     }
 }
