@@ -29,7 +29,7 @@ pub fn run() {
     match flags.cmd {
         Some(flags::Command::Doctor) => Doctor::new().render(),
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
-        _ => match Token::all() {
+        None => match Token::all() {
             Ok((_, results)) => {
                 if results.is_empty() {
                     CliConfiguration::new(&flags, vec![]).render()
