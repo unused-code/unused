@@ -20,15 +20,15 @@ assert_fs = "1.0"
 predicates = "2.1"
 
 [[bin]]
-name = "read-ctags-rs"
+name = "read-ctags"
 path = "src/bin/read_ctags.rs"
 
 [[bin]]
-name = "token-search-rs"
+name = "token-search"
 path = "src/bin/token_search.rs"
 
 [[bin]]
-name = "tracked-files-rs"
+name = "tracked-files"
 path = "src/bin/codebase_files.rs"
 
 [[bin]]
