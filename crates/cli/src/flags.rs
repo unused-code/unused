@@ -75,6 +75,10 @@ pub struct Flags {
     #[structopt(long)]
     pub harsh: bool,
 
+    /// Override the path to the tags file
+    #[structopt(parse(from_os_str))]
+    pub tags_file: Option<std::path::PathBuf>,
+
     #[structopt(subcommand)]
     pub cmd: Option<Command>,
 }
