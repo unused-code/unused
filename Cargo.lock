@@ -123,7 +123,7 @@ dependencies = [
 
 [[package]]
 name = "cli"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "codebase_files",
  "colored",
@@ -686,7 +686,7 @@ dependencies = [
 
 [[package]]
 name = "read_ctags"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "nom",
  "serde",
@@ -916,7 +916,7 @@ dependencies = [
 
 [[package]]
 name = "token_search"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "aho-corasick",
  "codebase_files",
@@ -955,7 +955,7 @@ checksum = "f7fe0bb3479651439c9112f72b6c505038574c9fbb575ed1bf3b797fa39dd564"
 
 [[package]]
 name = "unused"
-version = "0.3.1"
+version = "0.4.0"
 dependencies = [
  "assert_cmd",
  "assert_fs",
