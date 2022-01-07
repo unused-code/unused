@@ -1,6 +1,6 @@
 [package]
 name = "unused"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Joshua Clayton <joshua.clayton@gmail.com>"]
 edition = "2018"
 
