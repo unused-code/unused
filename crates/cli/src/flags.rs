@@ -14,7 +14,7 @@ pub enum Command {
 
 #[derive(Debug, StructOpt)]
 #[structopt(
-    name = "unused-rs",
+    name = "unused",
     about = "A command line tool to identify potentially unused code",
     setting = structopt::clap::AppSettings::ColoredHelp
 )]
