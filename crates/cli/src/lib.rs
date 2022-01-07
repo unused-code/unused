@@ -31,13 +31,10 @@ pub fn run() {
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
         None => match Token::all() {
             Ok((_, results)) => {
-                if results.is_empty() {
-                    CliConfiguration::new(&flags, vec![]).render()
-                } else {
-                    CliConfiguration::new(&flags, results).render();
-                    if flags.harsh {
-                        process::exit(1);
-                    }
+                let configuration = CliConfiguration::new(&flags, results);
+                configuration.render();
+                if flags.harsh && !configuration.analyses().is_empty() {
+                    process::exit(1);
                 }
             }
             Err(e) => {
