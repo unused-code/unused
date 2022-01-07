@@ -31,8 +31,8 @@ impl Token {
     }
 
     /// Load tokens after reading tags
-    pub fn all() -> Result<(PathBuf, Vec<Token>), ReadCtagsError> {
-        TagsReader::default().load().map(|tags_file| {
+    pub fn all(tags_reader: &TagsReader) -> Result<(PathBuf, Vec<Token>), ReadCtagsError> {
+        tags_reader.load().map(|tags_file| {
             (
                 tags_file.path,
                 Self::build_tokens_from_outcome(tags_file.tags),

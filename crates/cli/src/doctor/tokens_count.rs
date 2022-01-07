@@ -1,4 +1,5 @@
 use super::check_up::{CheckUp, Status};
+use read_ctags::TagsReader;
 use token_search::Token;
 
 pub enum TokensCount {
@@ -7,8 +8,8 @@ pub enum TokensCount {
 }
 
 impl TokensCount {
-    pub fn new() -> Self {
-        match Token::all() {
+    pub fn new(tags_reader: &TagsReader) -> Self {
+        match Token::all(tags_reader) {
             Ok((_, results)) => Self::Success(results.len()),
             Err(e) => Self::Failure(format!("{}", e)),
         }

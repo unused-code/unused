@@ -4,8 +4,8 @@ use read_ctags::TagsReader;
 pub struct UsingUniversalCtags(Option<String>);
 
 impl UsingUniversalCtags {
-    pub fn new() -> Self {
-        match TagsReader::default().load() {
+    pub fn new(tags_reader: &TagsReader) -> Self {
+        match tags_reader.load() {
             Ok(outcome) => Self(outcome.program.name),
             Err(_) => Self(None),
         }

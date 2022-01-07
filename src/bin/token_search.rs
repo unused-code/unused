@@ -1,7 +1,9 @@
+use read_ctags::TagsReader;
 use token_search::{Token, TokenSearchConfig, TokenSearchResults};
 
 fn main() {
-    match Token::all() {
+    let tags_reader = TagsReader::default();
+    match Token::all(&tags_reader) {
         Ok((_, outcome)) => {
             let mut config = TokenSearchConfig::default();
             config.tokens = outcome;

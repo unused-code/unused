@@ -1,5 +1,6 @@
 use super::check_up::{CheckUp, Status};
 use codebase_files::CodebaseFiles;
+use read_ctags::TagsReader;
 use std::path::PathBuf;
 use token_search::Token;
 
@@ -12,8 +13,8 @@ pub enum IncludingTagsInFilesSearched {
 }
 
 impl IncludingTagsInFilesSearched {
-    pub fn new() -> Self {
-        match Token::all() {
+    pub fn new(tags_reader: &TagsReader) -> Self {
+        match Token::all(tags_reader) {
             Ok((ctags_path, _)) => IncludingTagsInFilesSearched::Success {
                 files_searched: CodebaseFiles::all().paths,
                 ctags_path,

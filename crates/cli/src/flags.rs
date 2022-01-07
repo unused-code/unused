@@ -1,5 +1,5 @@
 use read_ctags::Language;
-use std::str::FromStr;
+use std::{path::PathBuf, str::FromStr};
 use structopt::StructOpt;
 use token_analysis::{OrderField, UsageLikelihoodStatus};
 
@@ -74,6 +74,10 @@ pub struct Flags {
     /// Return an exit status of 1 if any tokens are found
     #[structopt(long)]
     pub harsh: bool,
+
+    /// Override path to tags file
+    #[structopt(long, short = "t", parse(from_os_str))]
+    pub tags_file_path: Option<PathBuf>,
 
     #[structopt(subcommand)]
     pub cmd: Option<Command>,

@@ -107,6 +107,12 @@ impl TagsReader {
         })
     }
 
+    /// Override the default set of paths with a user-provided one
+    pub fn for_tags_file(&mut self, path: PathBuf) -> &mut Self {
+        self.filenames = vec![path];
+        self
+    }
+
     fn read(&self) -> Result<(PathBuf, String), ReadCtagsError> {
         Self::first_success(
             &self.filenames,

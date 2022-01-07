@@ -10,19 +10,20 @@ use super::doctor::{
     tags_included_in_files_searched::*, tokens_count::*, using_universal_ctags::*,
 };
 use colored::*;
+use read_ctags::TagsReader;
 
 pub struct Doctor {
     checks: Vec<Box<dyn CheckUp>>,
 }
 
 impl Doctor {
-    pub fn new() -> Self {
+    pub fn new(tags_reader: &TagsReader) -> Self {
         Self {
             checks: vec![
-                Box::new(IncludingTagsInFilesSearched::new()),
-                Box::new(TokensCount::new()),
+                Box::new(IncludingTagsInFilesSearched::new(tags_reader)),
+                Box::new(TokensCount::new(tags_reader)),
                 Box::new(FilesCount::new()),
-                Box::new(UsingUniversalCtags::new()),
+                Box::new(UsingUniversalCtags::new(tags_reader)),
                 Box::new(LoadedProjectConfigurations::new()),
             ],
         }

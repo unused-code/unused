@@ -11,6 +11,7 @@ use colored::*;
 use doctor::Doctor;
 use flags::{Flags, Format};
 use project_configuration::ProjectConfigurations;
+use read_ctags::TagsReader;
 use std::process;
 use structopt::StructOpt;
 use token_search::Token;
@@ -26,10 +27,15 @@ pub fn run() {
         control::set_override(false);
     }
 
+    let mut tags_reader = TagsReader::default();
+    if let Some(tags_file_path) = &flags.tags_file_path {
+        tags_reader.for_tags_file(tags_file_path.to_path_buf());
+    }
+
     match flags.cmd {
-        Some(flags::Command::Doctor) => Doctor::new().render(),
+        Some(flags::Command::Doctor) => Doctor::new(&tags_reader).render(),
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
-        None => match Token::all() {
+        None => match Token::all(&tags_reader) {
             Ok((_, results)) => {
                 let configuration = CliConfiguration::new(&flags, results);
                 configuration.render();
