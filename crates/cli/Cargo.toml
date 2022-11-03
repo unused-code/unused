@@ -14,4 +14,4 @@ project_configuration = { path = "../../crates/project_configuration/" }
 colored = "1.9.3"
 itertools = "0.9"
 dirs-next = "2.0"
-structopt = "0.3"
+clap = { version = "4", features = ["derive"] }

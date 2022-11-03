@@ -40,12 +40,6 @@ impl FromStr for OrderField {
     }
 }
 
-impl OrderField {
-    pub fn variants() -> Vec<&'static str> {
-        vec!["token", "file"]
-    }
-}
-
 impl AnalysisFilter {
     pub fn set_order_field(&mut self, field: OrderField) {
         match self.sort_order {

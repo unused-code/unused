@@ -126,13 +126,25 @@ fn build_token_search_config(cmd: &Flags, token_results: Vec<Token>) -> TokenSea
     }
 
     if !cmd.only_filetypes.is_empty() {
-        search_config.language_restriction =
-            LanguageRestriction::Only(to_hash_set(&cmd.only_filetypes));
+        search_config.language_restriction = LanguageRestriction::Only(to_hash_set(
+            &cmd.only_filetypes
+                .clone()
+                .into_iter()
+                .map(|v| v.into())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        ));
     }
 
     if !cmd.except_filetypes.is_empty() {
-        search_config.language_restriction =
-            LanguageRestriction::Except(to_hash_set(&cmd.except_filetypes));
+        search_config.language_restriction = LanguageRestriction::Except(to_hash_set(
+            &cmd.except_filetypes
+                .clone()
+                .into_iter()
+                .map(|v| v.into())
+                .collect::<Vec<_>>()
+                .as_slice(),
+        ));
     }
 
     search_config
@@ -149,7 +161,7 @@ fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
         analysis_filter.usage_likelihood_filter = UsageLikelihoodStatus::all();
     }
 
-    analysis_filter.set_order_field(cmd.sort_order.clone());
+    analysis_filter.set_order_field(cmd.sort_order.clone().into());
 
     if cmd.reverse {
         analysis_filter.set_order_descending();

@@ -1,9 +1,9 @@
-use read_ctags::Language;
-use std::{path::PathBuf, str::FromStr};
-use structopt::StructOpt;
-use token_analysis::{OrderField, UsageLikelihoodStatus};
+use super::types::*;
+use clap::{Parser, Subcommand};
+use std::path::PathBuf;
+use token_analysis::UsageLikelihoodStatus;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub enum Command {
     /// Run diagnostics to identify any potential issues running unused
     Doctor,
@@ -12,93 +12,79 @@ pub enum Command {
     DefaultYaml,
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(
+#[derive(Debug, Parser)]
+#[command(
     name = "unused",
     about = "A command line tool to identify potentially unused code",
-    setting = structopt::clap::AppSettings::ColoredHelp
+    long_about = None,
 )]
 pub struct Flags {
     /// Disable color output
-    #[structopt(long)]
+    ///
+    #[arg(long)]
     pub no_color: bool,
 
     /// Disable summary
-    #[structopt(long)]
+    #[arg(long)]
     pub no_summary: bool,
 
     /// Render output as JSON
-    #[structopt(long)]
+    #[arg(long)]
     pub json: bool,
 
     /// Hide progress bar
-    #[structopt(long, short = "P")]
+    #[arg(long, short = 'P')]
     pub no_progress: bool,
 
     /// Include tokens that fall into any likelihood category
-    #[structopt(long, short = "a")]
+    #[arg(long, short = 'a')]
     pub all_likelihoods: bool,
 
     /// Limit token output to those that match the provided likelihood(s)
     ///
-    /// This allows for a comma-delimited list of likelihoods.
-    #[structopt(long = "likelihood", short = "l", use_delimiter = true, default_value = "high", possible_values = &["high", "medium", "low"])]
+    /// This allows for a comma-delimited list of likelihoods (low, medium, high).
+    #[arg(
+        long = "likelihood",
+        short = 'l',
+        value_delimiter = ',',
+        default_value = "high"
+    )]
     pub likelihoods: Vec<UsageLikelihoodStatus>,
 
     /// Sort output
-    #[structopt(long, possible_values = &OrderField::variants(), default_value, case_insensitive = true)]
-    pub sort_order: OrderField,
+    #[arg(long, value_parser, default_value_t)]
+    pub sort_order: SortOrder,
 
     /// Reverse sort order
-    #[structopt(long)]
+    #[arg(long)]
     pub reverse: bool,
 
     /// Limit tokens to those defined in the provided file extension(s)
-    #[structopt(long, possible_values = &Language::extensions(), use_delimiter = true)]
-    pub only_filetypes: Vec<Language>,
+    #[arg(long, value_parser, value_delimiter = ',')]
+    pub only_filetypes: Vec<LanguageExtension>,
 
     /// Limit tokens to those defined except for the provided file extension(s)
-    #[structopt(long, possible_values = &Language::extensions(), use_delimiter = true)]
-    pub except_filetypes: Vec<Language>,
+    #[arg(long, value_parser, value_delimiter = ',')]
+    pub except_filetypes: Vec<LanguageExtension>,
 
     /// Format output
-    #[structopt(long, possible_values = &["standard", "compact", "json"], default_value = "standard", case_insensitive = true)]
+    #[arg(long, value_parser, default_value = "standard", default_value_t)]
     pub format: Format,
 
     /// Ignore files/directories matching the provided value
     ///
     /// This supports providing multiple values with a comma-delimited list
-    #[structopt(long, use_delimiter = true)]
+    #[arg(long, value_delimiter = ',')]
     pub ignore: Vec<String>,
 
     /// Return an exit status of 1 if any tokens are found
-    #[structopt(long)]
+    #[arg(long)]
     pub harsh: bool,
 
     /// Override path to tags file
-    #[structopt(long, short = "t", parse(from_os_str))]
+    #[arg(long, short = 't')]
     pub tags_file_path: Option<PathBuf>,
 
-    #[structopt(subcommand)]
+    #[command(subcommand)]
     pub cmd: Option<Command>,
-}
-
-#[derive(Debug)]
-pub enum Format {
-    Standard,
-    Compact,
-    Json,
-}
-
-impl FromStr for Format {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_ref() {
-            "standard" => Ok(Format::Standard),
-            "compact" => Ok(Format::Compact),
-            "json" => Ok(Format::Json),
-            v => Err(format!("Unknown format: {}", v)),
-        }
-    }
 }

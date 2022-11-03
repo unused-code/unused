@@ -5,19 +5,21 @@ mod error_message;
 mod flags;
 mod formatters;
 mod project_configurations_loader;
+mod types;
 
+use clap::Parser;
 use cli_configuration::CliConfiguration;
 use colored::*;
 use doctor::Doctor;
-use flags::{Flags, Format};
+use flags::Flags;
 use project_configuration::ProjectConfigurations;
 use read_ctags::TagsReader;
 use std::process;
-use structopt::StructOpt;
 use token_search::Token;
+use types::Format;
 
 pub fn run() {
-    let mut flags = Flags::from_args();
+    let mut flags = Flags::parse();
 
     if flags.json {
         flags.format = Format::Json;
