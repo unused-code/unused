@@ -13,6 +13,13 @@
   config_files:
     - db/
     - config/
+  method_aliases:
+    - from: "*?"
+      to: "be_{}"
+    - from: "has_*?"
+      to: "have_{}"
+    - from: "*Validator"
+      to: "{snakecase}"
   auto_low_likelihood:
     - name: Test
       token_ends_with: Test
