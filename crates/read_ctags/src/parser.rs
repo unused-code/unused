@@ -5,17 +5,17 @@ use super::tag_program::TagProgram;
 use super::tags::Tags;
 use super::token_kind::TokenKind;
 use nom::{
-    IResult,
+    IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_until, take_while},
     character::complete::{alphanumeric1, anychar},
     combinator::{map, opt, verify},
-    error::context,
     multi::separated_list0,
-    sequence::{preceded, separated_pair, terminated, tuple},
+    sequence::{preceded, separated_pair, terminated},
 };
 use std::collections::{BTreeMap, HashSet};
-use std::iter::FromIterator;
+use std::path::Path;
+#[cfg(test)]
 use std::path::PathBuf;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -25,12 +25,13 @@ enum ParsedField<'a> {
 }
 
 pub fn parse(input: &str) -> IResult<&str, (TagProgram, Tags)> {
-    tuple((
+    (
         map(opt(internal::tag_metadata), |v| {
             v.unwrap_or(TagProgram::default())
         }),
         map(tags_body, Tags::new),
-    ))(input)
+    )
+        .parse(input)
 }
 
 fn tags_body(input: &str) -> IResult<&str, HashSet<CtagItem>> {
@@ -40,11 +41,8 @@ fn tags_body(input: &str) -> IResult<&str, HashSet<CtagItem>> {
             HashSet::from_iter,
         ),
         opt(tag("\n")),
-    )(input)
-}
-
-fn is_kind(field: &ParsedField) -> bool {
-    matches!(field, ParsedField::KindField(_))
+    )
+    .parse(input)
 }
 
 fn key_value_parser(input: &str) -> IResult<&str, ParsedField<'_>> {
@@ -55,26 +53,28 @@ fn key_value_parser(input: &str) -> IResult<&str, ParsedField<'_>> {
             take_while(|c| c != '\t' && c != '\n'),
         ),
         |(k, v)| ParsedField::ParsedField(k, v),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn kind_parser(input: &str) -> IResult<&str, ParsedField<'_>> {
-    map(anychar, ParsedField::KindField)(input)
+    map(anychar, ParsedField::KindField).parse(input)
 }
 
 fn fields_parser(input: &str) -> IResult<&str, Vec<ParsedField<'_>>> {
     let field_parser = alt((key_value_parser, kind_parser));
-    preceded(tag("\t"), separated_list0(tag("\t"), field_parser))(input)
+    preceded(tag("\t"), separated_list0(tag("\t"), field_parser)).parse(input)
 }
 
 fn address_and_fields_parser(input: &str) -> IResult<&str, (String, Vec<ParsedField<'_>>)> {
     alt((
-        tuple((tag_address_parser, fields_parser)),
-        tuple((
+        (tag_address_parser, fields_parser),
+        (
             tag_address_without_fields_parser,
             internal::succeed(Vec::new),
-        )),
-    ))(input)
+        ),
+    ))
+    .parse(input)
 }
 
 fn tag_address_parser(input: &str) -> IResult<&str, String> {
@@ -84,17 +84,22 @@ fn tag_address_parser(input: &str) -> IResult<&str, String> {
             |v: &str| v.to_string(),
         ),
         tag(";\""),
-    )(input)
+    )
+    .parse(input)
 }
 
 fn tag_address_without_fields_parser(input: &str) -> IResult<&str, String> {
-    map(internal::to_newline, std::string::ToString::to_string)(input)
+    map(internal::to_newline, std::string::ToString::to_string).parse(input)
 }
 
 fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
-    let (input, name) = context("tagName", internal::to_tab)(input)?;
-    let (input, file_path) = context("tagPath", map(internal::to_tab, PathBuf::from))(input)?;
+    let (input, name) = internal::to_tab(input)?;
+    let (input, raw_path) = internal::to_tab(input)?;
     let (input, (address, parsed_fields)) = address_and_fields_parser(input)?;
+    let file_path = {
+        let p = Path::new(raw_path);
+        p.strip_prefix("../").unwrap_or(p).to_path_buf()
+    };
     let language = Language::from_path(&file_path);
     let (kind, tags) = build_kind_and_fields(language, &parsed_fields);
 
@@ -102,10 +107,7 @@ fn ctag_item_parser(input: &str) -> IResult<&str, CtagItem> {
         input,
         CtagItem {
             name: name.to_string(),
-            file_path: file_path
-                .strip_prefix("../")
-                .unwrap_or(&file_path)
-                .to_path_buf(),
+            file_path,
             address,
             language,
             tags,
@@ -118,22 +120,28 @@ fn build_kind_and_fields(
     language: Option<Language>,
     parsed_fields: &[ParsedField<'_>],
 ) -> (TokenKind, BTreeMap<String, String>) {
-    let (kind, rest): (Vec<ParsedField<'_>>, Vec<ParsedField<'_>>) =
-        parsed_fields.iter().partition(|&f| is_kind(f));
-
     let mut hash = BTreeMap::new();
+    let mut kind_char: Option<char> = None;
+    let mut kind_count = 0usize;
 
-    for field in &rest {
+    for field in parsed_fields {
         match field {
-            ParsedField::ParsedField(k, v) => hash.insert((*k).to_string(), (*v).to_string()),
-            ParsedField::KindField(_) => None,
-        };
+            ParsedField::KindField(c) => {
+                kind_count += 1;
+                kind_char = Some(*c);
+            }
+            ParsedField::ParsedField(k, v) => {
+                hash.insert(k.to_string(), v.to_string());
+            }
+        }
     }
 
-    match (kind.len(), kind.first()) {
-        (1, Some(ParsedField::KindField(c))) => (TokenKind::from_ctag(language, *c), hash),
-        (_, _) => (TokenKind::Undefined, hash),
-    }
+    let kind = match (kind_count, kind_char) {
+        (1, Some(c)) => TokenKind::from_ctag(language, c),
+        _ => TokenKind::Undefined,
+    };
+
+    (kind, hash)
 }
 
 #[test]
