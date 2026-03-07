@@ -17,10 +17,12 @@ pub struct ProjectConfiguration {
 pub struct PathPrefix(String);
 
 impl PathPrefix {
+    #[must_use]
     pub fn new(input: &str) -> PathPrefix {
         PathPrefix(input.to_string())
     }
 
+    #[must_use]
     pub fn compare(&self, path: &Path) -> bool {
         path.starts_with(&self.0)
     }
@@ -43,7 +45,7 @@ impl LowLikelihoodConfig {
             Self::build_conflicts(self.token_assertions()).map(AssertionConflict::TokenConflict),
         ]
         .into_iter()
-        .filter_map(|v| v)
+        .flatten()
         .collect()
     }
 
@@ -58,10 +60,15 @@ impl LowLikelihoodConfig {
             .filter(|m| !m.matcher().full_equals())
             .collect();
 
-        if equals_assertions.len() > 0 && partial_equals_assertions.len() > 0 {
+        if !equals_assertions.is_empty() && !partial_equals_assertions.is_empty() {
             let mut results = equals_assertions.clone();
             results.extend(partial_equals_assertions.clone());
-            Some(results.into_iter().map(|v| v.to_owned()).collect())
+            Some(
+                results
+                    .into_iter()
+                    .map(std::borrow::ToOwned::to_owned)
+                    .collect(),
+            )
         } else {
             None
         }
@@ -102,6 +109,7 @@ impl Default for ProjectConfiguration {
 }
 
 impl ProjectConfiguration {
+    #[must_use]
     pub fn low_likelihood_match(
         &self,
         token_search_result: &TokenSearchResult,
@@ -111,6 +119,7 @@ impl ProjectConfiguration {
             .find(|ll| ll.matches(token_search_result))
     }
 
+    #[must_use]
     pub fn codebase_config_match(&self, results: &TokenSearchResults) -> bool {
         self.matches_if.iter().all(|assertion| {
             results
@@ -157,7 +166,7 @@ mod tests {
         let ends_with = ValueMatcher::EndsWith("o".to_string());
         let equals = ValueMatcher::Equals("foo".to_string());
         let exact_match = ValueMatcher::ExactMatchOnAnyOf(
-            vec![String::from("foo"), String::from("bar")]
+            [String::from("foo"), String::from("bar")]
                 .iter()
                 .cloned()
                 .collect(),

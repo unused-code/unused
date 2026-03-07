@@ -2,16 +2,16 @@
 name = "cli"
 version = "0.4.0"
 authors = ["Joshua Clayton <joshua.clayton@gmail.com>"]
-edition = "2018"
+edition = "2024"
 
 [dependencies]
-serde_json = "1.0.50"
+serde_json = { workspace = true }
 codebase_files = { path = "../../crates/codebase_files/" }
 read_ctags = { path = "../../crates/read_ctags/" }
 token_search = { path = "../../crates/token_search/" }
 token_analysis = { path = "../../crates/token_analysis/" }
 project_configuration = { path = "../../crates/project_configuration/" }
-colored = "1.9.3"
-itertools = "0.9"
+colored = "3.1.1"
+itertools = { workspace = true }
 dirs-next = "2.0"
 clap = { version = "4", features = ["derive"] }

@@ -2,7 +2,7 @@ use super::analysis_filter::{AnalysisFilter, OrderField, SortOrder};
 use super::occurrence_count::FileTypeCounts;
 use super::usage_likelihood::UsageLikelihood;
 use indicatif::ParallelProgressIterator;
-use itertools::{rev, Itertools};
+use itertools::{Itertools, rev};
 use project_configuration::ProjectConfiguration;
 use rayon::prelude::*;
 use serde::Serialize;
@@ -16,6 +16,7 @@ pub struct TokenUsage {
 }
 
 impl TokenUsage {
+    #[must_use]
     pub fn new(
         project_configuration: &ProjectConfiguration,
         token_search_result: TokenSearchResult,
@@ -38,9 +39,10 @@ impl TokenUsage {
 pub struct TokenUsageResults(Vec<TokenUsage>);
 
 impl TokenUsageResults {
+    #[must_use]
     pub fn calculate(
         token_search_config: &TokenSearchConfig,
-        results: TokenSearchResults,
+        results: &TokenSearchResults,
         config: &ProjectConfiguration,
     ) -> Self {
         let unwrapped_results = results.value().to_vec();
@@ -54,9 +56,11 @@ impl TokenUsageResults {
         TokenUsageResults(results)
     }
 
+    #[must_use]
     pub fn filter(&self, config: &AnalysisFilter) -> Vec<&TokenUsage> {
-        let final_result = (*self.0)
-            .into_iter()
+        let final_result = self
+            .0
+            .iter()
             .filter(|a| {
                 config
                     .usage_likelihood_filter
@@ -64,12 +68,10 @@ impl TokenUsageResults {
             })
             .filter(|a| config.ignores_path(&a.result))
             .sorted_by_key(|a| match config.sort_order {
-                SortOrder::Ascending(OrderField::Token) => a.result.token.token.to_string(),
-                SortOrder::Descending(OrderField::Token) => a.result.token.token.to_string(),
-                SortOrder::Ascending(OrderField::File) => {
-                    a.result.token.first_path().to_string_lossy().into_owned()
-                }
-                SortOrder::Descending(OrderField::File) => {
+                SortOrder::Ascending(OrderField::Token)
+                | SortOrder::Descending(OrderField::Token) => a.result.token.token.clone(),
+                SortOrder::Ascending(OrderField::File)
+                | SortOrder::Descending(OrderField::File) => {
                     a.result.token.first_path().to_string_lossy().into_owned()
                 }
             });

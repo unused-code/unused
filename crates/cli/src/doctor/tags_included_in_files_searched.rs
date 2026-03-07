@@ -19,7 +19,7 @@ impl IncludingTagsInFilesSearched {
                 files_searched: CodebaseFiles::all().paths,
                 ctags_path,
             },
-            Err(e) => IncludingTagsInFilesSearched::Failure(format!("{}", e)),
+            Err(e) => IncludingTagsInFilesSearched::Failure(format!("{e}")),
         }
     }
 
@@ -29,25 +29,25 @@ impl IncludingTagsInFilesSearched {
                 files_searched,
                 ctags_path,
             } => Ok((ctags_path, files_searched.iter().any(|v| v == ctags_path))),
-            Self::Failure(e) => Err(e.to_string()),
+            Self::Failure(e) => Err(e.clone()),
         }
     }
 }
 
 impl CheckUp for IncludingTagsInFilesSearched {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Is the tags file not present in the list of files searched?"
     }
 
     fn status(&self) -> Status {
         match self.tags_searched() {
             Ok((ctags_path, true)) => Status::Warn(format!(
-                "The tags file loaded ({:?}) is present in the list of files searched",
-                ctags_path
+                "The tags file loaded ({}) is present in the list of files searched",
+                ctags_path.display()
             )),
             Ok((ctags_path, false)) => Status::OK(format!(
-                "The tags file loaded ({:?}) is not present in the list of files searched",
-                ctags_path
+                "The tags file loaded ({}) is not present in the list of files searched",
+                ctags_path.display()
             )),
             Err(e) => Status::Error(e),
         }

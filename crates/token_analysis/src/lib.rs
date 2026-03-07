@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod analysis_filter;
 mod occurrence_count;
 mod token_usage;

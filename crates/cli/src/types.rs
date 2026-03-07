@@ -29,13 +29,11 @@ impl From<LanguageExtension> for Language {
     fn from(ext: LanguageExtension) -> Self {
         match ext {
             LanguageExtension::Css => Language::CSS,
-            LanguageExtension::Ex => Language::Elixir,
-            LanguageExtension::Exs => Language::Elixir,
+            LanguageExtension::Ex | LanguageExtension::Exs => Language::Elixir,
             LanguageExtension::Elm => Language::Elm,
             LanguageExtension::Html => Language::HTML,
             LanguageExtension::Json => Language::JSON,
-            LanguageExtension::Js => Language::JavaScript,
-            LanguageExtension::Jsx => Language::JavaScript,
+            LanguageExtension::Js | LanguageExtension::Jsx => Language::JavaScript,
             LanguageExtension::Md => Language::Markdown,
             LanguageExtension::Py => Language::Python,
             LanguageExtension::Rb => Language::Ruby,
@@ -43,8 +41,7 @@ impl From<LanguageExtension> for Language {
             LanguageExtension::Scss => Language::SCSS,
             LanguageExtension::Sh => Language::Sh,
             LanguageExtension::Svg => Language::SVG,
-            LanguageExtension::Ts => Language::TypeScript,
-            LanguageExtension::Tsx => Language::TypeScript,
+            LanguageExtension::Ts | LanguageExtension::Tsx => Language::TypeScript,
             LanguageExtension::Xml => Language::XML,
         }
     }
@@ -89,8 +86,9 @@ impl Display for SortOrder {
     }
 }
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, Default, ValueEnum)]
 pub enum Format {
+    #[default]
     Standard,
     Compact,
     Json,
@@ -103,11 +101,5 @@ impl Display for Format {
             Format::Compact => write!(f, "compact"),
             Format::Json => write!(f, "json"),
         }
-    }
-}
-
-impl Default for Format {
-    fn default() -> Self {
-        Format::Standard
     }
 }

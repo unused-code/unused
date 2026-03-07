@@ -1,7 +1,6 @@
 use super::occurrence_count::FileTypeCounts;
 use project_configuration::ProjectConfiguration;
 use serde::Serialize;
-use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use token_search::TokenSearchResult;
@@ -12,17 +11,12 @@ pub struct UsageLikelihood {
     pub reason: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize)]
 pub enum UsageLikelihoodStatus {
+    #[default]
     High,
     Medium,
     Low,
-}
-
-impl Default for UsageLikelihoodStatus {
-    fn default() -> Self {
-        UsageLikelihoodStatus::High
-    }
 }
 
 impl FromStr for UsageLikelihoodStatus {
@@ -33,10 +27,7 @@ impl FromStr for UsageLikelihoodStatus {
             "high" => Ok(UsageLikelihoodStatus::High),
             "medium" => Ok(UsageLikelihoodStatus::Medium),
             "low" => Ok(UsageLikelihoodStatus::Low),
-            val => Err(String::from(format!(
-                "Unable to parse usage likelihood: {}",
-                val
-            ))),
+            val => Err(format!("Unable to parse usage likelihood: {val}")),
         }
     }
 }
@@ -52,6 +43,7 @@ impl Display for UsageLikelihoodStatus {
 }
 
 impl UsageLikelihoodStatus {
+    #[must_use]
     pub fn all() -> Vec<UsageLikelihoodStatus> {
         vec![
             UsageLikelihoodStatus::High,
@@ -62,6 +54,7 @@ impl UsageLikelihoodStatus {
 }
 
 impl UsageLikelihood {
+    #[must_use]
     pub fn calculate(
         project_configuration: &ProjectConfiguration,
         token_search_result: &TokenSearchResult,
@@ -81,19 +74,17 @@ impl UsageLikelihood {
                         status: UsageLikelihoodStatus::High,
                         reason: String::from("Only one occurrence exists"),
                     }
+                } else if all_counts.total().occurrence_count == 2
+                    && all_counts.test.occurrence_count == 1
+                {
+                    UsageLikelihood {
+                        status: UsageLikelihoodStatus::Medium,
+                        reason: String::from("Only a test and definition exists"),
+                    }
                 } else {
-                    if all_counts.total().occurrence_count == 2
-                        && all_counts.test.occurrence_count == 1
-                    {
-                        UsageLikelihood {
-                            status: UsageLikelihoodStatus::Medium,
-                            reason: String::from("Only a test and definition exists"),
-                        }
-                    } else {
-                        UsageLikelihood {
-                            status: UsageLikelihoodStatus::Low,
-                            reason: String::from("Token has wide usage"),
-                        }
+                    UsageLikelihood {
+                        status: UsageLikelihoodStatus::Low,
+                        reason: String::from("Token has wide usage"),
                     }
                 }
             }
@@ -106,19 +97,19 @@ mod tests {
     use super::*;
     use read_ctags::{CtagItem, Language, TokenKind};
     use std::collections::{BTreeMap, HashMap};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use token_search::Token;
 
-    fn build_ruby_file(token: &str, path: &PathBuf, kind: TokenKind) -> Token {
+    fn build_ruby_file(token: &str, path: &Path, kind: TokenKind) -> Token {
         Token::new(
             token.to_string(),
-            vec![CtagItem {
+            [CtagItem {
                 name: token.to_string(),
                 file_path: path.to_path_buf(),
                 address: String::from("1"),
                 language: Some(Language::Ruby),
                 tags: BTreeMap::new(),
-                kind: kind,
+                kind,
             }]
             .iter()
             .cloned()

@@ -1,4 +1,4 @@
-use super::internal::{colored::*, configuration_warnings, CliConfiguration};
+use super::internal::{CliConfiguration, colored::Colorize, configuration_warnings};
 use token_analysis::UsageLikelihoodStatus;
 
 pub fn format(cli_config: &CliConfiguration) {

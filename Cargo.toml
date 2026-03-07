@@ -2,22 +2,22 @@
 name = "unused"
 version = "0.4.0"
 authors = ["Joshua Clayton <joshua.clayton@gmail.com>"]
-edition = "2018"
+edition = "2024"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = "1.0.50"
-read_ctags = { path = "crates/read_ctags/" }
-token_search = { path = "crates/token_search/" }
-codebase_files = { path = "crates/codebase_files/" }
 cli = { path = "crates/cli/" }
+codebase_files = { path = "crates/codebase_files/" }
 mimalloc = { version = "*", default-features = false, optional = true }
+read_ctags = { path = "crates/read_ctags/" }
+serde_json = { workspace = true }
+token_search = { path = "crates/token_search/" }
 
 [dev-dependencies]
-assert_cmd = "2.0"
-assert_fs = "1.0"
-predicates = "2.1"
+assert_cmd = "2.1"
+assert_fs = "1.1"
+predicates = "3.1"
 
 [[bin]]
 name = "read-ctags"
@@ -37,6 +37,15 @@ path = "src/bin/unused.rs"
 
 [workspace]
 members = ["crates/*"]
+
+[workspace.dependencies]
+indicatif = { version = "0.18", features = ["rayon"] }
+itertools = "0.14"
+nom = "7"
+rayon = "1.11"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+totems = "0.2.7"
 
 [profile.release]
 lto = "fat"

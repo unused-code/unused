@@ -1,4 +1,5 @@
 #![deny(missing_docs)]
+#![warn(clippy::pedantic)]
 
 //! `token_search` is a crate for searching a set of files for occurrences of tokens.
 //!

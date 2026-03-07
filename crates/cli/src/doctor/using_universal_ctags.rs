@@ -13,7 +13,7 @@ impl UsingUniversalCtags {
 }
 
 impl CheckUp for UsingUniversalCtags {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Is the tags file generated with Universal Ctags?"
     }
 
@@ -21,7 +21,7 @@ impl CheckUp for UsingUniversalCtags {
         match &self.0 {
             None => Status::Error("Could not determine tags program name".to_string()),
             Some(v) => {
-                let message = format!("Using tags program: {}", v);
+                let message = format!("Using tags program: {v}");
                 if v.contains("Universal Ctags") {
                     Status::OK(message)
                 } else {

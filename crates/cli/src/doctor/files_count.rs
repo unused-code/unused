@@ -11,7 +11,7 @@ impl FilesCount {
 }
 
 impl CheckUp for FilesCount {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Are files found in the application?"
     }
 

@@ -17,7 +17,7 @@ impl LoadedProjectConfigurations {
 }
 
 impl CheckUp for LoadedProjectConfigurations {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Does the loaded configuration have available project types?"
     }
 

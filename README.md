@@ -131,6 +131,22 @@ unused doctor
 This will perform a series of simple checks to help identify obvious issues
 with configuration.
 
+## Contributing
+
+This project uses [`just`](https://github.com/casey/just) for common development tasks.
+
+Run the project checks before opening a PR:
+
+```sh
+just test
+```
+
+If you do not have the required test tooling installed yet, run:
+
+```sh
+just setup
+```
+
 ## License
 
 Copyright 2020 Josh Clayton. See the [LICENSE](LICENSE).

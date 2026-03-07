@@ -1,6 +1,6 @@
-pub use super::super::{cli_configuration::CliConfiguration, flags::Flags};
+pub use super::super::cli_configuration::CliConfiguration;
 pub use colored;
-use colored::*;
+use colored::Colorize;
 use project_configuration::ProjectConfigurations;
 
 pub fn configuration_warnings(config: &CliConfiguration) {
@@ -13,7 +13,7 @@ pub fn configuration_warnings(config: &CliConfiguration) {
         for conflict in conflicts {
             let keys: Vec<_> = conflict
                 .assertions()
-                .into_iter()
+                .iter()
                 .filter_map(ProjectConfigurations::assertion_to_key)
                 .collect();
 

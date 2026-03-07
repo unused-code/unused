@@ -1,4 +1,4 @@
-use super::internal::{colored::*, configuration_warnings, CliConfiguration};
+use super::internal::{CliConfiguration, colored::Colorize, configuration_warnings};
 use std::collections::HashSet;
 use token_analysis::UsageLikelihoodStatus;
 
@@ -17,7 +17,7 @@ pub fn format(cli_config: &CliConfiguration) {
             UsageLikelihoodStatus::Medium => analysis.token.yellow(),
             UsageLikelihoodStatus::Low => analysis.token.green(),
         };
-        println!("{}", display_token);
+        println!("{display_token}");
         println!("   Reason: {}", analysis.likelihood_reason.cyan());
 
         println!(
@@ -37,28 +37,28 @@ pub fn format(cli_config: &CliConfiguration) {
             }
         }
 
-        println!("");
+        println!();
     }
 
     if cli_config.display_summary() {
-        usage_summary(tokens_list.len(), files_list.len(), &cli_config);
+        usage_summary(tokens_list.len(), files_list.len(), cli_config);
     }
 
     configuration_warnings(cli_config);
 }
 
 fn usage_summary(tokens_count: usize, files_count: usize, cli_config: &CliConfiguration) {
-    println!("");
+    println!();
     println!("{}", "== UNUSED SUMMARY ==".white());
     println!("   Tokens found: {}", colorize_total(tokens_count));
     println!("   Files found: {}", colorize_total(files_count));
     println!(
         "   Applied language filters: {}",
-        format!("{}", cli_config.language_restriction()).cyan()
+        cli_config.language_restriction().clone().cyan()
     );
     println!(
         "   Sort order: {}",
-        format!("{}", cli_config.sort_order()).cyan()
+        cli_config.sort_order().to_string().cyan()
     );
     println!(
         "   Usage likelihood: {}",
@@ -68,7 +68,7 @@ fn usage_summary(tokens_count: usize, files_count: usize, cli_config: &CliConfig
         "   Configuration setting: {}",
         cli_config.configuration_name().cyan()
     );
-    println!("");
+    println!();
 }
 
 fn colorize_total(amount: usize) -> colored::ColoredString {

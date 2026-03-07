@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod analyzed_token;
 mod cli_configuration;
 mod doctor;
@@ -9,7 +11,7 @@ mod types;
 
 use clap::Parser;
 use cli_configuration::CliConfiguration;
-use colored::*;
+use colored::control;
 use doctor::Doctor;
 use flags::Flags;
 use project_configuration::ProjectConfigurations;
@@ -31,7 +33,7 @@ pub fn run() {
 
     let mut tags_reader = TagsReader::default();
     if let Some(tags_file_path) = &flags.tags_file_path {
-        tags_reader.for_tags_file(tags_file_path.to_path_buf());
+        tags_reader.for_tags_file(tags_file_path.clone());
     }
 
     match flags.cmd {
@@ -46,7 +48,7 @@ pub fn run() {
                 }
             }
             Err(e) => {
-                error_message::failed_token_parse(e);
+                error_message::failed_token_parse(&e);
                 process::exit(1)
             }
         },

@@ -1,4 +1,4 @@
-use super::types::*;
+use super::types::{Format, LanguageExtension, SortOrder};
 use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 use token_analysis::UsageLikelihoodStatus;
@@ -18,6 +18,7 @@ pub enum Command {
     about = "A command line tool to identify potentially unused code",
     long_about = None,
 )]
+#[allow(clippy::struct_excessive_bools)]
 pub struct Flags {
     /// Disable color output
     ///

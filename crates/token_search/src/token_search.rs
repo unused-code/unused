@@ -12,10 +12,9 @@ use std::collections::{HashMap, HashSet};
 use std::convert::TryInto;
 use std::fs;
 use std::io;
-use std::iter::FromIterator;
 use std::path::PathBuf;
 
-/// A TokenSearchConfig is necessary to construct the list of tokens and files to search against
+/// A `TokenSearchConfig` is necessary to construct the list of tokens and files to search against
 /// when generating results.
 pub struct TokenSearchConfig {
     /// Given a token, determine whether it should be searched for
@@ -33,7 +32,7 @@ pub struct TokenSearchConfig {
     pub language_restriction: LanguageRestriction,
 }
 
-/// LanguageRestriction allows for filtering out what's searched
+/// `LanguageRestriction` allows for filtering out what's searched
 pub enum LanguageRestriction {
     /// All lanugages are searched
     NoRestriction,
@@ -47,22 +46,26 @@ impl std::fmt::Display for LanguageRestriction {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
             LanguageRestriction::NoRestriction => write!(f, "all file types"),
-            LanguageRestriction::Only(languages) => write!(
-                f,
-                "{}",
-                format!(
+            LanguageRestriction::Only(languages) => {
+                write!(
+                    f,
                     "only {}",
-                    languages.iter().map(|l| l.to_string()).join(", ")
+                    languages
+                        .iter()
+                        .map(std::string::ToString::to_string)
+                        .join(", ")
                 )
-            ),
-            LanguageRestriction::Except(languages) => write!(
-                f,
-                "{}",
-                format!(
+            }
+            LanguageRestriction::Except(languages) => {
+                write!(
+                    f,
                     "except {}",
-                    languages.iter().map(|l| l.to_string()).join(", ")
+                    languages
+                        .iter()
+                        .map(std::string::ToString::to_string)
+                        .join(", ")
                 )
-            ),
+            }
         }
     }
 }
@@ -71,16 +74,19 @@ impl Default for TokenSearchConfig {
     fn default() -> Self {
         TokenSearchConfig {
             filter_tokens: |t| {
-                !t.token.contains(" ")
+                !t.token.contains(' ')
                     && t.token.len() > 1
                     && !t.only_ctag(|ct| ct.kind == TokenKind::RSpecDescribe)
             },
             tokens: vec![],
             files: CodebaseFiles::all().paths,
             display_progress: true,
-            language_restriction: LanguageRestriction::Except(HashSet::from_iter(
-                vec![Language::JSON, Language::Markdown].iter().cloned(),
-            )),
+            language_restriction: LanguageRestriction::Except(
+                [Language::JSON, Language::Markdown]
+                    .iter()
+                    .copied()
+                    .collect::<HashSet<_>>(),
+            ),
         }
     }
 }
@@ -88,18 +94,19 @@ impl Default for TokenSearchConfig {
 impl TokenSearchConfig {
     fn progress_bar(prefix: &str, size: usize) -> ProgressBar {
         let pb = ProgressBar::new(size.try_into().unwrap());
-        pb.set_message(prefix);
-        pb.set_style(
-            ProgressStyle::default_bar()
-                .template("{msg:12} [{bar:40.cyan/blue}] {pos:>7}/{len:7}({eta})")
-                .progress_chars("#>-"),
-        );
+        pb.set_message(prefix.to_string());
+        let style = ProgressStyle::default_bar()
+            .template("{msg:12} [{bar:40.cyan/blue}] {pos:>7}/{len:7}({eta})")
+            .unwrap_or_else(|_| ProgressStyle::default_bar())
+            .progress_chars("#>-");
+        pb.set_style(style);
         pb
     }
 
     /// Generate a progress bar with configurable message
     ///
     /// This takes into account the `display_progress` flag
+    #[must_use]
     pub fn toggleable_progress_bar(&self, prefix: &str, size: usize) -> ProgressBar {
         if self.display_progress {
             Self::progress_bar(prefix, size)
@@ -134,11 +141,13 @@ pub struct TokenSearchResults(Vec<TokenSearchResult>);
 
 impl TokenSearchResults {
     /// Convenience method for generating results with the default config
+    #[must_use]
     pub fn generate() -> Self {
         Self::generate_with_config(&TokenSearchConfig::default())
     }
 
     /// Extract search results
+    #[must_use]
     pub fn value(&self) -> &[TokenSearchResult] {
         &self.0
     }
@@ -152,28 +161,26 @@ impl TokenSearchResults {
             .collect();
 
         let tokens: Vec<_> = filtered_results.iter().map(|r| &r.token).collect();
-        let ac = AhoCorasickBuilder::new()
+        let Ok(ac) = AhoCorasickBuilder::new()
             .match_kind(MatchKind::LeftmostLongest)
-            .build(tokens);
+            .build(tokens)
+        else {
+            return TokenSearchResults(vec![]);
+        };
 
         let res = config
             .files
             .par_iter()
-            .progress_with(config.toggleable_progress_bar(&"🤔 Working...", config.files.len()))
+            .progress_with(config.toggleable_progress_bar("🤔 Working...", config.files.len()))
             .fold(HashMap::new, |mut results, f| {
-                if let Ok(contents) = Self::read_file(&f) {
-                    for (key, res) in ac
-                        .find_iter(&contents)
-                        .map(|v| v.pattern())
-                        .into_iter()
-                        .sorted_by_key(|&v| v)
-                        .group_by(|&v| v)
-                        .into_iter()
-                        .map(|(idx, res)| (idx, res.count()))
-                        .collect::<Vec<(usize, usize)>>()
-                    {
-                        let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
+                if let Ok(contents) = Self::read_file(f) {
+                    let mut counts: HashMap<usize, usize> = HashMap::new();
+                    for matched in ac.find_iter(&contents) {
+                        *counts.entry(matched.pattern().as_usize()).or_insert(0) += 1;
+                    }
 
+                    for (key, res) in counts {
+                        let file_with_occurrences = results.entry(key).or_insert(HashMap::new());
                         file_with_occurrences.insert(f.clone(), res);
                     }
                 }
@@ -226,17 +233,19 @@ impl Serialize for TokenSearchResults {
 pub struct TokenSearchResult {
     /// The token being searched
     pub token: Token,
-    /// A HashMap of paths and occurrence counts
+    /// A `HashMap` of paths and occurrence counts
     pub occurrences: HashMap<PathBuf, usize>,
 }
 
 impl TokenSearchResult {
     /// The paths where a token is defined
+    #[must_use]
     pub fn defined_paths(&self) -> HashSet<PathBuf> {
         self.token.defined_paths.clone()
     }
 
     /// The paths where a token occurs that are not also where the token is defined
+    #[must_use]
     pub fn occurred_paths(&self) -> HashSet<PathBuf> {
         self.all_occurred_paths()
             .difference(&self.defined_paths())

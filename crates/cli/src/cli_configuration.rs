@@ -4,7 +4,6 @@ use super::project_configurations_loader::load_and_parse_config;
 use super::{Flags, Format};
 use project_configuration::{AssertionConflict, ProjectConfiguration};
 use std::collections::{HashMap, HashSet};
-use std::iter::FromIterator;
 use token_analysis::{
     AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults, UsageLikelihoodStatus,
 };
@@ -25,9 +24,9 @@ impl<'a> CliConfiguration<'a> {
         let results = TokenSearchResults::generate_with_config(&token_search_config);
         let project_configuration = load_and_parse_config()
             .best_match(&results)
-            .unwrap_or(ProjectConfiguration::default());
+            .unwrap_or_default();
         let outcome =
-            TokenUsageResults::calculate(&token_search_config, results, &project_configuration);
+            TokenUsageResults::calculate(&token_search_config, &results, &project_configuration);
 
         Self {
             flags,
@@ -58,7 +57,7 @@ impl<'a> CliConfiguration<'a> {
         self.analysis_filter
             .usage_likelihood_filter
             .iter()
-            .map(|f| f.to_string())
+            .map(std::string::ToString::to_string)
             .collect()
     }
 
@@ -67,7 +66,6 @@ impl<'a> CliConfiguration<'a> {
             .filter(&self.analysis_filter)
             .iter()
             .map(|t| t.result.token.token.len())
-            .into_iter()
             .max()
             .unwrap_or(0)
     }
@@ -77,7 +75,6 @@ impl<'a> CliConfiguration<'a> {
             .filter(&self.analysis_filter)
             .iter()
             .map(|t| t.result.token.first_path().to_string_lossy().len())
-            .into_iter()
             .max()
             .unwrap_or(0)
     }
@@ -94,22 +91,22 @@ impl<'a> CliConfiguration<'a> {
         self.outcome
             .filter(&self.analysis_filter)
             .into_iter()
-            .map(|t| t.into())
+            .map(std::convert::Into::into)
             .collect()
     }
 
     pub fn configuration_name(&self) -> String {
-        self.project_configuration.name.to_string()
+        self.project_configuration.name.clone()
     }
 
     pub fn low_likelihood_conflicts(&self) -> HashMap<String, Vec<AssertionConflict>> {
         let mut conflict_results = HashMap::new();
 
-        for ll in self.project_configuration.low_likelihood.iter() {
+        for ll in &self.project_configuration.low_likelihood {
             let conflicts = ll.conflicts();
 
-            if conflicts.len() > 0 {
-                conflict_results.insert(ll.name.to_string(), conflicts);
+            if !conflicts.is_empty() {
+                conflict_results.insert(ll.name.clone(), conflicts);
             }
         }
 
@@ -118,33 +115,35 @@ impl<'a> CliConfiguration<'a> {
 }
 
 fn build_token_search_config(cmd: &Flags, token_results: Vec<Token>) -> TokenSearchConfig {
-    let mut search_config = TokenSearchConfig::default();
-    search_config.tokens = token_results;
+    let mut search_config = TokenSearchConfig {
+        tokens: token_results,
+        ..TokenSearchConfig::default()
+    };
 
     if cmd.no_progress {
         search_config.display_progress = false;
     }
 
     if !cmd.only_filetypes.is_empty() {
-        search_config.language_restriction = LanguageRestriction::Only(to_hash_set(
-            &cmd.only_filetypes
-                .clone()
-                .into_iter()
-                .map(|v| v.into())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        ));
+        let only: Vec<_> = cmd
+            .only_filetypes
+            .clone()
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect();
+        search_config.language_restriction =
+            LanguageRestriction::Only(to_hash_set(only.as_slice()));
     }
 
     if !cmd.except_filetypes.is_empty() {
-        search_config.language_restriction = LanguageRestriction::Except(to_hash_set(
-            &cmd.except_filetypes
-                .clone()
-                .into_iter()
-                .map(|v| v.into())
-                .collect::<Vec<_>>()
-                .as_slice(),
-        ));
+        let except: Vec<_> = cmd
+            .except_filetypes
+            .clone()
+            .into_iter()
+            .map(std::convert::Into::into)
+            .collect();
+        search_config.language_restriction =
+            LanguageRestriction::Except(to_hash_set(except.as_slice()));
     }
 
     search_config
@@ -154,7 +153,9 @@ fn build_analysis_filter(cmd: &Flags) -> AnalysisFilter {
     let mut analysis_filter = AnalysisFilter::default();
 
     if !cmd.likelihoods.is_empty() {
-        analysis_filter.usage_likelihood_filter = cmd.likelihoods.clone();
+        analysis_filter
+            .usage_likelihood_filter
+            .clone_from(&cmd.likelihoods);
     }
 
     if cmd.all_likelihoods {
@@ -176,5 +177,5 @@ fn to_hash_set<T>(input: &[T]) -> HashSet<T>
 where
     T: std::hash::Hash + Eq + std::clone::Clone,
 {
-    HashSet::from_iter(input.iter().cloned())
+    input.iter().cloned().collect::<HashSet<_>>()
 }

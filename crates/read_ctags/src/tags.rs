@@ -1,52 +1,59 @@
 use super::CtagItem;
 use serde::{Deserialize, Serialize};
-use std::collections::hash_set::{IntoIter, Iter};
 use std::collections::HashSet;
+use std::collections::hash_set::{IntoIter, Iter};
 use std::default::Default;
 use std::iter::FromIterator;
 use std::path::PathBuf;
 
 /// Wrapper for tags values
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 pub struct Tags(HashSet<CtagItem>);
 
 impl Tags {
-    /// Build tags from a set of CtagItems
+    /// Build tags from a set of `CtagItems`
+    #[must_use]
     pub fn new(tags: HashSet<CtagItem>) -> Self {
         Tags(tags)
     }
 
-    /// Carry iter() from HashSet
-    pub fn iter(&self) -> Iter<CtagItem> {
+    /// Carry `iter()` from `HashSet`
+    #[must_use]
+    pub fn iter(&self) -> Iter<'_, CtagItem> {
         self.0.iter()
     }
 
-    /// Delegate len() to HashSet
+    /// Delegate `len()` to `HashSet`
+    #[must_use]
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Delegate `is_empty()` to `HashSet`
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     /// Remove all tags associated to a specific path
     pub fn remove_at_path(&mut self, path: &PathBuf) {
-        self.0.retain(|item| &item.file_path != path)
+        self.0.retain(|item| &item.file_path != path);
     }
 
     /// Add tags to a tags file
     pub fn add(&mut self, tags: Tags) {
-        self.0.extend(tags.0)
+        self.0.extend(tags.0);
     }
 
     /// Encode all tags to be written to a tags file
+    #[must_use]
     pub fn to_file_body(&self) -> String {
-        let mut encodings = self.iter().map(|tag| tag.encode()).collect::<Vec<String>>();
+        let mut encodings = self
+            .iter()
+            .map(super::ctag_item::CtagItem::encode)
+            .collect::<Vec<String>>();
         encodings.sort();
         encodings.join("\n")
-    }
-}
-
-impl Default for Tags {
-    fn default() -> Self {
-        Tags(HashSet::new())
     }
 }
 
@@ -56,6 +63,15 @@ impl IntoIterator for Tags {
 
     fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Tags {
+    type Item = &'a CtagItem;
+    type IntoIter = Iter<'a, CtagItem>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.iter()
     }
 }
 

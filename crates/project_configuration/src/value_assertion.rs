@@ -8,6 +8,7 @@ pub enum Assertion {
 }
 
 impl Assertion {
+    #[must_use]
     pub fn matches(&self, token_search_result: &TokenSearchResult) -> bool {
         match self {
             Assertion::PathAssertion(matcher) => token_search_result
@@ -20,10 +21,10 @@ impl Assertion {
         }
     }
 
+    #[must_use]
     pub fn matcher(&self) -> &ValueMatcher {
         match self {
-            Assertion::PathAssertion(matcher) => matcher,
-            Assertion::TokenAssertion(matcher) => matcher,
+            Assertion::PathAssertion(matcher) | Assertion::TokenAssertion(matcher) => matcher,
         }
     }
 }
@@ -35,10 +36,11 @@ pub enum AssertionConflict {
 }
 
 impl AssertionConflict {
+    #[must_use]
     pub fn assertions(&self) -> &Vec<Assertion> {
         match self {
-            AssertionConflict::PathConflict(assertions) => assertions,
-            AssertionConflict::TokenConflict(assertions) => assertions,
+            AssertionConflict::PathConflict(assertions)
+            | AssertionConflict::TokenConflict(assertions) => assertions,
         }
     }
 }
@@ -54,6 +56,7 @@ pub enum ValueMatcher {
 }
 
 impl ValueMatcher {
+    #[must_use]
     pub fn check(&self, haystack: &str) -> bool {
         match self {
             ValueMatcher::StartsWith(v) => haystack.starts_with(v),
@@ -65,12 +68,12 @@ impl ValueMatcher {
         }
     }
 
+    #[must_use]
     pub fn full_equals(&self) -> bool {
-        match self {
-            ValueMatcher::Equals(_) => true,
-            ValueMatcher::ExactMatchOnAnyOf(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            ValueMatcher::Equals(_) | ValueMatcher::ExactMatchOnAnyOf(_)
+        )
     }
 }
 
@@ -88,39 +91,39 @@ mod tests {
 
     #[test]
     fn matches_starts_with() {
-        assert!(ValueMatcher::StartsWith(foo()).check(&"foobar"));
-        assert!(!ValueMatcher::StartsWith(bar()).check(&"foobar"));
+        assert!(ValueMatcher::StartsWith(foo()).check("foobar"));
+        assert!(!ValueMatcher::StartsWith(bar()).check("foobar"));
     }
 
     #[test]
     fn matches_ends_with() {
-        assert!(ValueMatcher::EndsWith(bar()).check(&"foobar"));
-        assert!(!ValueMatcher::EndsWith(foo()).check(&"foobar"));
+        assert!(ValueMatcher::EndsWith(bar()).check("foobar"));
+        assert!(!ValueMatcher::EndsWith(foo()).check("foobar"));
     }
 
     #[test]
     fn matches_contains() {
-        assert!(ValueMatcher::Contains(bar()).check(&"barar"));
-        assert!(ValueMatcher::Contains(bar()).check(&"bar"));
-        assert!(ValueMatcher::Contains(bar()).check(&" bar"));
-        assert!(!ValueMatcher::Contains(bar()).check(&" "));
-        assert!(!ValueMatcher::Contains(bar()).check(&"nope"));
-        assert!(!ValueMatcher::Contains(bar()).check(&"ar"));
+        assert!(ValueMatcher::Contains(bar()).check("barar"));
+        assert!(ValueMatcher::Contains(bar()).check("bar"));
+        assert!(ValueMatcher::Contains(bar()).check(" bar"));
+        assert!(!ValueMatcher::Contains(bar()).check(" "));
+        assert!(!ValueMatcher::Contains(bar()).check("nope"));
+        assert!(!ValueMatcher::Contains(bar()).check("ar"));
     }
 
     #[test]
     fn matches_any_of() {
-        let values: HashSet<_> = vec![foo(), bar()].iter().cloned().collect();
+        let values: HashSet<_> = [foo(), bar()].iter().cloned().collect();
 
-        assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"foo"));
-        assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"bar"));
-        assert!(!ValueMatcher::ExactMatchOnAnyOf(values.clone()).check(&"foobar"));
+        assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check("foo"));
+        assert!(ValueMatcher::ExactMatchOnAnyOf(values.clone()).check("bar"));
+        assert!(!ValueMatcher::ExactMatchOnAnyOf(values.clone()).check("foobar"));
     }
 
     #[test]
     fn matches_capital() {
-        assert!(ValueMatcher::StartsWithCapital.check(&"Foo"));
-        assert!(!ValueMatcher::StartsWithCapital.check(&"foo"));
+        assert!(ValueMatcher::StartsWithCapital.check("Foo"));
+        assert!(!ValueMatcher::StartsWithCapital.check("foo"));
     }
 
     #[test]

@@ -1,5 +1,5 @@
-use assert_cmd::prelude::*; // Add methods on commands
-use assert_fs::{prelude::*, NamedTempFile};
+use assert_cmd::assert::OutputAssertExt; // Add assert() on commands
+use assert_fs::{NamedTempFile, prelude::*};
 use predicates::prelude::*; // Used for writing assertions
 use std::process::Command; // Run programs
 
@@ -44,11 +44,13 @@ fn token_search_successful() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn configure_command_with_tags_file_override(
-) -> Result<(NamedTempFile, Command), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("unused")?;
+fn configure_command_with_tags_file_override()
+-> Result<(NamedTempFile, Command), Box<dyn std::error::Error>> {
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("unused"));
     let file = assert_fs::NamedTempFile::new("tags")?;
-    file.write_str("Alias	../crates/read_ctags/src/token_kind.rs	/^    Alias,$/;\"	e	enum:TokenKind")?;
+    file.write_str(
+        "Alias	../crates/read_ctags/src/token_kind.rs	/^    Alias,$/;\"	e	enum:TokenKind",
+    )?;
 
     let path = file.path().display().to_string();
     cmd.arg("-t");

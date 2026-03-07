@@ -1,6 +1,5 @@
 use super::usage_likelihood::UsageLikelihoodStatus;
 use project_configuration::{Assertion, ValueMatcher};
-use std::default::Default;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use token_search::TokenSearchResult;
@@ -16,16 +15,11 @@ pub enum SortOrder {
     Descending(OrderField),
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Default)]
 pub enum OrderField {
+    #[default]
     Token,
     File,
-}
-
-impl Default for OrderField {
-    fn default() -> Self {
-        OrderField::Token
-    }
 }
 
 impl FromStr for OrderField {
@@ -35,7 +29,7 @@ impl FromStr for OrderField {
         match s.to_lowercase().as_ref() {
             "file" => Ok(OrderField::File),
             "token" => Ok(OrderField::Token),
-            val => Err(String::from(format!("Unable to parse order: {}", val))),
+            val => Err(format!("Unable to parse order: {val}")),
         }
     }
 }
@@ -49,16 +43,14 @@ impl AnalysisFilter {
     }
 
     pub fn set_order_ascending(&mut self) {
-        match &self.sort_order {
-            SortOrder::Descending(field) => self.sort_order = SortOrder::Ascending(*field),
-            _ => (),
+        if let SortOrder::Descending(field) = &self.sort_order {
+            self.sort_order = SortOrder::Ascending(*field);
         }
     }
 
     pub fn set_order_descending(&mut self) {
-        match &self.sort_order {
-            SortOrder::Ascending(field) => self.sort_order = SortOrder::Descending(*field),
-            _ => (),
+        if let SortOrder::Ascending(field) = &self.sort_order {
+            self.sort_order = SortOrder::Descending(*field);
         }
     }
 
@@ -66,14 +58,15 @@ impl AnalysisFilter {
         self.ignored_by_path = substrings
             .into_iter()
             .map(|s| Assertion::PathAssertion(ValueMatcher::Contains(s)))
-            .collect()
+            .collect();
     }
 
+    #[must_use]
     pub fn ignores_path(&self, result: &TokenSearchResult) -> bool {
-        if self.ignored_by_path.len() > 0 {
-            !self.ignored_by_path.iter().any(|a| a.matches(result))
-        } else {
+        if self.ignored_by_path.is_empty() {
             true
+        } else {
+            !self.ignored_by_path.iter().any(|a| a.matches(result))
         }
     }
 }
@@ -100,8 +93,8 @@ impl Display for OrderField {
 impl Display for SortOrder {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         match self {
-            SortOrder::Ascending(field) => write!(f, "{} (asc)", field),
-            SortOrder::Descending(field) => write!(f, "{} (desc)", field),
+            SortOrder::Ascending(field) => write!(f, "{field} (asc)"),
+            SortOrder::Descending(field) => write!(f, "{field} (desc)"),
         }
     }
 }

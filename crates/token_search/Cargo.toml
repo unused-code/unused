@@ -2,18 +2,18 @@
 name = "token_search"
 version = "0.2.0"
 authors = ["Joshua Clayton <joshua.clayton@gmail.com>"]
-edition = "2018"
+edition = "2024"
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nom = "5"
-aho-corasick = "0.7"
-rayon = "1.1"
+nom = { workspace = true }
+aho-corasick = "1.1"
+rayon = { workspace = true }
 codebase_files = { path = "../../crates/codebase_files" }
-itertools = "0.9"
+itertools = { workspace = true }
 read_ctags = { path = "../../crates/read_ctags" }
-serde = { version = "1.0.105", features = ["derive"] }
-serde_json = "1.0.50"
-indicatif = {version = "0.14", features = ["with_rayon"]}
+serde = { workspace = true }
+serde_json = { workspace = true }
+indicatif = { workspace = true }

@@ -56,6 +56,7 @@ impl Language {
     }
 
     /// All file extensions supported
+    #[must_use]
     pub fn extensions() -> Vec<&'static str> {
         vec![
             "css", "ex", "exs", "elm", "html", "json", "js", "jsx", "md", "py", "rb", "rs", "scss",
@@ -64,6 +65,7 @@ impl Language {
     }
 
     /// All languages
+    #[must_use]
     pub fn all() -> HashSet<Language> {
         vec![
             Language::CSS,
@@ -83,7 +85,7 @@ impl Language {
             Language::XML,
         ]
         .iter()
-        .cloned()
+        .copied()
         .collect()
     }
 }
@@ -94,28 +96,21 @@ impl FromStr for Language {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_ref() {
             "css" => Ok(Language::CSS),
-            "ex" => Ok(Language::Elixir),
-            "exs" => Ok(Language::Elixir),
+            "ex" | "exs" => Ok(Language::Elixir),
             "elm" => Ok(Language::Elm),
             "html" => Ok(Language::HTML),
             "json" => Ok(Language::JSON),
-            "js" => Ok(Language::JavaScript),
-            "jsx" => Ok(Language::JavaScript),
+            "js" | "jsx" => Ok(Language::JavaScript),
             "md" => Ok(Language::Markdown),
             "py" => Ok(Language::Python),
             "rb" => Ok(Language::Ruby),
             "rs" => Ok(Language::Rust),
             "scss" => Ok(Language::SCSS),
-            "sh" => Ok(Language::Sh),
+            "sh" | "" => Ok(Language::Sh),
             "svg" => Ok(Language::SVG),
-            "ts" => Ok(Language::TypeScript),
-            "tsx" => Ok(Language::TypeScript),
+            "ts" | "tsx" => Ok(Language::TypeScript),
             "xml" => Ok(Language::XML),
-            "" => Ok(Language::Sh),
-            ext => Err(String::from(format!(
-                "Unable to parse file extension: {}",
-                ext
-            ))),
+            ext => Err(format!("Unable to parse file extension: {ext}")),
         }
     }
 }
@@ -135,7 +130,7 @@ mod tests {
 
     #[test]
     fn all_extensions_are_supported() {
-        for ext in Language::extensions().iter() {
+        for ext in &Language::extensions() {
             assert_ok!(Language::from_str(ext));
         }
     }

@@ -30,8 +30,10 @@ impl Display for CtagItem {
     fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
         write!(
             f,
-            "CtagItem({}, {:?}, {:?})",
-            self.name, self.file_path, self.language
+            "CtagItem({}, {}, {:?})",
+            self.name,
+            self.file_path.display(),
+            self.language
         )
     }
 }
@@ -42,7 +44,7 @@ pub enum CtagsParseError {
     /// Incomplete parse; parsing was successful but didn't consume all input
     IncompleteParse,
     /// Parsing failed
-    FailedParse(nom::Err<(String, nom::error::ErrorKind)>),
+    FailedParse(String),
 }
 
 impl Display for CtagsParseError {
@@ -50,7 +52,7 @@ impl Display for CtagsParseError {
         match *self {
             CtagsParseError::IncompleteParse => write!(f, "Unable to parse ctags file fully"),
             CtagsParseError::FailedParse(ref err) => {
-                write!(f, "Failed to parse ctags file: {}", err)
+                write!(f, "Failed to parse ctags file: {err}")
             }
         }
     }
@@ -58,6 +60,10 @@ impl Display for CtagsParseError {
 
 impl CtagItem {
     /// Parse tags generatd by Universal Ctags to generate `CtagItem`s
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the tags content cannot be fully parsed.
     pub fn parse(path: PathBuf, input: &str) -> Result<TagsFile, CtagsParseError> {
         Self::parse_input(input).map(|(program, tags)| TagsFile {
             path,
@@ -67,22 +73,25 @@ impl CtagItem {
     }
 
     /// Parse program and tags
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input cannot be parsed into tag program metadata and tags.
     pub fn parse_input(input: &str) -> Result<(TagProgram, Tags), CtagsParseError> {
         match parser::parse(input) {
             Ok(("", value)) => Ok(value),
             Ok(_) => Err(CtagsParseError::IncompleteParse),
-            Err(e) => Err(CtagsParseError::FailedParse(
-                e.map(|(v1, v2)| (v1.to_string(), v2)),
-            )),
+            Err(e) => Err(CtagsParseError::FailedParse(e.to_string())),
         }
     }
 
     /// encode a `CtagItem` into its line representation within a tags file
+    #[must_use]
     pub fn encode(&self) -> String {
         let tags = self
             .tags
             .iter()
-            .map(|(k, v)| format!("{}:{}", k, v))
+            .map(|(k, v)| format!("{k}:{v}"))
             .collect::<Vec<String>>()
             .join("\t");
 

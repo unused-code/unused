@@ -1,4 +1,4 @@
-use super::project_configuration::*;
+use super::project_configuration::{LowLikelihoodConfig, PathPrefix, ProjectConfiguration};
 use super::value_assertion::{Assertion, ValueMatcher};
 use std::collections::{HashMap, HashSet};
 use std::include_str;
@@ -14,7 +14,7 @@ const TOKEN_STARTS_WITH: &str = "token_starts_with";
 const TOKEN_ENDS_WITH: &str = "token_ends_with";
 const CLASS_OR_MODULE: &str = "class_or_module";
 const ALLOWED_TOKENS: &str = "allowed_tokens";
-const SUPPORTED_ASSERTIONS: [&'static str; 9] = [
+const SUPPORTED_ASSERTIONS: [&str; 9] = [
     PATH_STARTS_WITH,
     PATH_ENDS_WITH,
     PATH_EQUALS,
@@ -31,14 +31,17 @@ pub struct ProjectConfigurations {
 }
 
 impl ProjectConfigurations {
+    #[must_use]
     pub fn default_yaml() -> String {
         include_str!("default_config.yml").to_string()
     }
 
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&ProjectConfiguration> {
         self.configs.get(name)
     }
 
+    #[must_use]
     pub fn parse(contents: &str) -> Self {
         let configs = match YamlLoader::load_from_str(contents) {
             Ok(results) => Self::parse_all_from_yaml(&results),
@@ -47,10 +50,15 @@ impl ProjectConfigurations {
         ProjectConfigurations { configs }
     }
 
+    #[must_use]
     pub fn project_config_names(&self) -> Vec<String> {
-        self.configs.keys().map(|v| v.to_owned()).collect()
+        self.configs
+            .keys()
+            .map(std::borrow::ToOwned::to_owned)
+            .collect()
     }
 
+    #[must_use]
     pub fn best_match(&self, results: &TokenSearchResults) -> Option<ProjectConfiguration> {
         self.configs
             .iter()
@@ -59,6 +67,7 @@ impl ProjectConfigurations {
             .map(|(_, v)| v.clone())
     }
 
+    #[must_use]
     pub fn assertion_to_key(assertion: &Assertion) -> Option<&str> {
         match assertion {
             Assertion::TokenAssertion(ValueMatcher::StartsWith(_)) => Some(TOKEN_STARTS_WITH),
@@ -66,12 +75,13 @@ impl ProjectConfigurations {
             Assertion::TokenAssertion(ValueMatcher::Equals(_)) => Some(TOKEN_EQUALS),
             Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => Some(ALLOWED_TOKENS),
             Assertion::TokenAssertion(ValueMatcher::StartsWithCapital) => Some(CLASS_OR_MODULE),
-            Assertion::TokenAssertion(ValueMatcher::Contains(_)) => None,
+            Assertion::TokenAssertion(ValueMatcher::Contains(_))
+            | Assertion::PathAssertion(
+                ValueMatcher::ExactMatchOnAnyOf(_) | ValueMatcher::StartsWithCapital,
+            ) => None,
             Assertion::PathAssertion(ValueMatcher::StartsWith(_)) => Some(PATH_STARTS_WITH),
             Assertion::PathAssertion(ValueMatcher::EndsWith(_)) => Some(PATH_ENDS_WITH),
             Assertion::PathAssertion(ValueMatcher::Equals(_)) => Some(PATH_EQUALS),
-            Assertion::PathAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => None,
-            Assertion::PathAssertion(ValueMatcher::StartsWithCapital) => None,
             Assertion::PathAssertion(ValueMatcher::Contains(_)) => Some(PATH_CONTAINS),
         }
     }
@@ -83,8 +93,8 @@ impl ProjectConfigurations {
                 |mut acc, doc_with_name| {
                     let config_name = doc_with_name["name"].as_str().unwrap_or("").to_string();
                     acc.insert(
-                        config_name.to_string(),
-                        Self::parse_from_yaml(&config_name, &doc_with_name),
+                        config_name.clone(),
+                        Self::parse_from_yaml(&config_name, doc_with_name),
                     );
                     acc
                 },
@@ -108,9 +118,8 @@ impl ProjectConfigurations {
         match &contents[key] {
             Yaml::Array(items) => items
                 .iter()
-                .map(|v| v.as_str())
-                .filter_map(|v| v)
-                .map(|v| PathPrefix::new(v))
+                .filter_map(|v| v.as_str())
+                .map(PathPrefix::new)
                 .collect(),
             _ => vec![],
         }
@@ -120,8 +129,7 @@ impl ProjectConfigurations {
         match &contents["auto_low_likelihood"] {
             Yaml::Array(items) => items
                 .iter()
-                .map(|i| Self::parse_low_likelihood_item(i))
-                .filter_map(|i| i)
+                .filter_map(Self::parse_low_likelihood_item)
                 .collect(),
             _ => vec![],
         }
@@ -131,7 +139,7 @@ impl ProjectConfigurations {
         match &contents["matches_if"] {
             Yaml::Array(items) => items
                 .iter()
-                .flat_map(|i| Self::parse_individual_matches_if(i))
+                .flat_map(Self::parse_individual_matches_if)
                 .collect(),
             _ => vec![],
         }
@@ -140,22 +148,20 @@ impl ProjectConfigurations {
     fn parse_individual_matches_if(contents: &Yaml) -> Vec<Assertion> {
         SUPPORTED_ASSERTIONS
             .iter()
-            .map(|&k| match &contents[k] {
-                Yaml::String(v) => Self::parse_single_assertion(k, &v),
+            .filter_map(|&k| match &contents[k] {
+                Yaml::String(v) => Self::parse_single_assertion(k, v),
                 _ => None,
             })
-            .filter_map(|a| a)
             .collect()
     }
 
     fn parse_low_likelihood_item(contents: &Yaml) -> Option<LowLikelihoodConfig> {
         match &contents["name"] {
             Yaml::String(name) => Some(LowLikelihoodConfig {
-                name: name.to_string(),
+                name: name.clone(),
                 matchers: SUPPORTED_ASSERTIONS
                     .iter()
-                    .map(|a| Self::parse_assertion_row(a, contents))
-                    .filter_map(|a| a)
+                    .filter_map(|a| Self::parse_assertion_row(a, contents))
                     .collect(),
             }),
             _ => None,
@@ -164,13 +170,14 @@ impl ProjectConfigurations {
 
     fn parse_assertion_row(key: &str, contents: &Yaml) -> Option<Assertion> {
         match &contents[key] {
-            Yaml::Boolean(val) => Self::parse_boolean_assertion(key, val),
+            Yaml::Boolean(val) => Self::parse_boolean_assertion(key, *val),
             Yaml::String(val) => Self::parse_single_assertion(key, val),
             Yaml::Array(vals) => Self::parse_multiple_assertions(
                 key,
                 vals.iter()
                     .filter_map(|v| v.clone().into_string())
-                    .collect(),
+                    .collect::<Vec<String>>()
+                    .as_slice(),
             ),
             _ => None,
         }
@@ -203,7 +210,7 @@ impl ProjectConfigurations {
         }
     }
 
-    fn parse_multiple_assertions(key: &str, val: Vec<String>) -> Option<Assertion> {
+    fn parse_multiple_assertions(key: &str, val: &[String]) -> Option<Assertion> {
         match key {
             ALLOWED_TOKENS => {
                 let values: HashSet<_> = val.iter().cloned().collect();
@@ -215,7 +222,7 @@ impl ProjectConfigurations {
         }
     }
 
-    fn parse_boolean_assertion(key: &str, val: &bool) -> Option<Assertion> {
+    fn parse_boolean_assertion(key: &str, val: bool) -> Option<Assertion> {
         match (key, val) {
             (CLASS_OR_MODULE, true) => {
                 Some(Assertion::TokenAssertion(ValueMatcher::StartsWithCapital))
@@ -327,7 +334,7 @@ mod tests {
                 matchers: vec![
                     Assertion::PathAssertion(ValueMatcher::EndsWith(String::from(".rb"))),
                     Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(
-                        vec![
+                        [
                             String::from("new?"),
                             String::from("index?"),
                             String::from("show?")
