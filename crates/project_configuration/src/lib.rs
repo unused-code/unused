@@ -1,5 +1,6 @@
 #![warn(clippy::pedantic)]
 
+mod alias_rules;
 mod loader;
 mod project_configuration;
 mod value_assertion;
