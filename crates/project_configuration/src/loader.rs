@@ -1,8 +1,10 @@
+use super::alias_rules::{AliasRule, AliasRuleField, RawAliasRule, compile_alias_rules};
 use super::project_configuration::{LowLikelihoodConfig, PathPrefix, ProjectConfiguration};
 use super::value_assertion::{Assertion, ValueMatcher};
 use serde::Deserialize;
 use serde_yaml::Value;
 use std::collections::{HashMap, HashSet};
+use std::fmt;
 use std::include_str;
 use token_search::TokenSearchResults;
 
@@ -40,6 +42,8 @@ struct RawProjectConfiguration {
     auto_low_likelihood: Vec<RawLowLikelihoodConfig>,
     #[serde(default)]
     matches_if: Vec<HashMap<String, Value>>,
+    #[serde(default)]
+    method_aliases: Vec<RawAliasRule>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -51,6 +55,47 @@ struct RawLowLikelihoodConfig {
 
 pub struct ProjectConfigurations {
     configs: HashMap<String, ProjectConfiguration>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ConfigLoadError {
+    Yaml(String),
+    AliasValidation(Vec<AliasValidationIssue>),
+}
+
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct AliasValidationIssue {
+    pub config_name: String,
+    pub rule_index: usize,
+    pub field: AliasRuleField,
+    pub message: String,
+}
+
+impl fmt::Display for ConfigLoadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConfigLoadError::Yaml(message) => {
+                write!(f, "Failed to parse project configuration YAML: {message}")
+            }
+            ConfigLoadError::AliasValidation(errors) => {
+                writeln!(f, "Invalid method alias configuration:")?;
+                for error in errors {
+                    writeln!(
+                        f,
+                        "- config `{}` method_aliases[{}].{}: {}",
+                        error.config_name,
+                        error.rule_index,
+                        match error.field {
+                            AliasRuleField::From => "from",
+                            AliasRuleField::To => "to",
+                        },
+                        error.message
+                    )?;
+                }
+                Ok(())
+            }
+        }
+    }
 }
 
 impl ProjectConfigurations {
@@ -65,12 +110,18 @@ impl ProjectConfigurations {
     }
 
     #[must_use]
-    pub fn parse(contents: &str) -> Self {
-        let configs = serde_yaml::from_str::<Vec<RawProjectConfiguration>>(contents).map_or_else(
-            |_| HashMap::new(),
-            |results| Self::parse_all_from_yaml(&results),
-        );
-        ProjectConfigurations { configs }
+    pub fn parse(contents: &str) -> Result<Self, ConfigLoadError> {
+        let raw_results = serde_yaml::from_str::<Vec<RawProjectConfiguration>>(contents)
+            .map_err(|error| ConfigLoadError::Yaml(error.to_string()))?;
+        let configs = Self::parse_all_from_yaml(&raw_results)?;
+        Ok(ProjectConfigurations { configs })
+    }
+
+    #[must_use]
+    pub fn parse_lossy(contents: &str) -> Self {
+        Self::parse(contents).unwrap_or_else(|_| Self {
+            configs: HashMap::new(),
+        })
     }
 
     #[must_use]
@@ -110,33 +161,65 @@ impl ProjectConfigurations {
 
     fn parse_all_from_yaml(
         contents: &[RawProjectConfiguration],
-    ) -> HashMap<String, ProjectConfiguration> {
-        contents
-            .iter()
-            .filter_map(|config| {
-                config.name.as_ref().map(|config_name| {
-                    (
-                        config_name.clone(),
-                        Self::parse_from_yaml(config_name, config),
-                    )
-                })
-            })
-            .collect()
+    ) -> Result<HashMap<String, ProjectConfiguration>, ConfigLoadError> {
+        let mut configs = HashMap::new();
+        let mut validation_errors = Vec::new();
+
+        for config in contents {
+            if let Some(config_name) = config.name.as_ref() {
+                match Self::parse_from_yaml(config_name, config) {
+                    Ok(parsed_config) => {
+                        configs.insert(config_name.clone(), parsed_config);
+                    }
+                    Err(mut errors) => validation_errors.append(&mut errors),
+                }
+            }
+        }
+
+        if validation_errors.is_empty() {
+            Ok(configs)
+        } else {
+            Err(ConfigLoadError::AliasValidation(validation_errors))
+        }
     }
 
     fn parse_from_yaml(
         config_name: &str,
         contents: &RawProjectConfiguration,
-    ) -> ProjectConfiguration {
-        ProjectConfiguration {
+    ) -> Result<ProjectConfiguration, Vec<AliasValidationIssue>> {
+        let method_aliases =
+            Self::parse_method_aliases(config_name, contents.method_aliases.as_slice())?;
+
+        Ok(ProjectConfiguration {
             name: String::from(config_name),
             application_file: Self::parse_path_prefixes(&contents.application_files),
             test_file: Self::parse_path_prefixes(&contents.test_files),
             config_file: Self::parse_path_prefixes(&contents.config_files),
             low_likelihood: Self::parse_low_likelihoods(&contents.auto_low_likelihood),
             matches_if: Self::parse_matches_if(&contents.matches_if),
-            method_aliases: vec![],
+            method_aliases,
+        })
+    }
+
+    fn parse_method_aliases(
+        config_name: &str,
+        method_aliases: &[RawAliasRule],
+    ) -> Result<Vec<AliasRule>, Vec<AliasValidationIssue>> {
+        if method_aliases.is_empty() {
+            return Ok(vec![]);
         }
+
+        compile_alias_rules(method_aliases).map_err(|errors| {
+            errors
+                .into_iter()
+                .map(|error| AliasValidationIssue {
+                    config_name: config_name.to_string(),
+                    rule_index: error.rule_index,
+                    field: error.field,
+                    message: error.message,
+                })
+                .collect()
+        })
     }
 
     fn parse_path_prefixes(paths: &[String]) -> Vec<PathPrefix> {
@@ -304,7 +387,7 @@ mod tests {
 
     #[test]
     fn config_loads_from_yaml() {
-        let configs = ProjectConfigurations::parse(&yaml_contents());
+        let configs = ProjectConfigurations::parse(&yaml_contents()).unwrap();
 
         let rails_config = configs.get("Rails").unwrap();
         assert_eq!(
@@ -397,5 +480,42 @@ mod tests {
         assert_eq!(phoenix_config.test_file, vec![PathPrefix::new("test/"),]);
 
         assert_eq!(phoenix_config.config_file, vec![PathPrefix::new("priv/"),]);
+        assert!(phoenix_config.method_aliases.is_empty());
+    }
+
+    #[test]
+    fn config_load_fails_with_alias_validation_errors() {
+        let yaml = "
+- name: Rails
+  method_aliases:
+    - from: admin?
+      to: be_{}
+    - from: has_*?
+      to: have_{camelcase}
+";
+
+        match ProjectConfigurations::parse(yaml) {
+            Ok(_) => panic!("expected alias validation error"),
+            Err(error) => {
+                assert_eq!(
+                    error,
+                    ConfigLoadError::AliasValidation(vec![
+                        AliasValidationIssue {
+                            config_name: "Rails".to_string(),
+                            rule_index: 0,
+                            field: AliasRuleField::From,
+                            message: "from pattern must contain exactly one `*` wildcard"
+                                .to_string(),
+                        },
+                        AliasValidationIssue {
+                            config_name: "Rails".to_string(),
+                            rule_index: 1,
+                            field: AliasRuleField::To,
+                            message: "unsupported to template token `{camelcase}`".to_string(),
+                        },
+                    ])
+                );
+            }
+        }
     }
 }
