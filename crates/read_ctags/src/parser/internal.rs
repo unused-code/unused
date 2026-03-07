@@ -1,12 +1,12 @@
 use super::TagProgram;
 use nom::{
-    IResult,
+    IResult, Parser,
     branch::alt,
     bytes::complete::{tag, take_till},
     combinator::map,
     error::ParseError,
     multi::separated_list0,
-    sequence::{preceded, terminated, tuple},
+    sequence::{preceded, terminated},
 };
 
 enum ProgramMetadata {
@@ -16,42 +16,19 @@ enum ProgramMetadata {
     Other,
 }
 
-impl ProgramMetadata {
-    fn author(&self) -> Option<String> {
-        match &self {
-            ProgramMetadata::Author(v) => Some(v.clone()),
-            _ => None,
+fn metadata_to_tag_program(metadata: Vec<ProgramMetadata>) -> TagProgram {
+    let mut name = None;
+    let mut author = None;
+    let mut version = None;
+
+    for item in metadata {
+        match item {
+            ProgramMetadata::Name(v) if name.is_none() => name = Some(v),
+            ProgramMetadata::Author(v) if author.is_none() => author = Some(v),
+            ProgramMetadata::Version(v) if version.is_none() => version = Some(v),
+            _ => {}
         }
     }
-
-    fn name(&self) -> Option<String> {
-        match &self {
-            ProgramMetadata::Name(v) => Some(v.clone()),
-            _ => None,
-        }
-    }
-
-    fn version(&self) -> Option<String> {
-        match &self {
-            ProgramMetadata::Version(v) => Some(v.clone()),
-            _ => None,
-        }
-    }
-}
-
-fn metadata_to_tag_program(metadata: &[ProgramMetadata]) -> TagProgram {
-    let name = metadata
-        .iter()
-        .find(|m| m.name().is_some())
-        .and_then(ProgramMetadata::name);
-    let author = metadata
-        .iter()
-        .find(|m| m.author().is_some())
-        .and_then(ProgramMetadata::author);
-    let version = metadata
-        .iter()
-        .find(|m| m.version().is_some())
-        .and_then(ProgramMetadata::version);
 
     TagProgram {
         name,
@@ -63,25 +40,27 @@ fn metadata_to_tag_program(metadata: &[ProgramMetadata]) -> TagProgram {
 pub fn tag_metadata(input: &str) -> IResult<&str, TagProgram> {
     map(
         terminated(separated_list0(tag("\n"), tag_annotation), tag("\n")),
-        |metadata| metadata_to_tag_program(&metadata),
-    )(input)
+        metadata_to_tag_program,
+    )
+    .parse(input)
 }
 
 fn tag_annotation(input: &str) -> IResult<&str, ProgramMetadata> {
-    alt((program_author, program_name, program_version, program_other))(input)
+    alt((program_author, program_name, program_version, program_other)).parse(input)
 }
 
-fn tag_value<'a>(tag_name: &'a str) -> impl Fn(&'a str) -> IResult<&'a str, String> {
+fn tag_value<'a>(tag_name: &'a str) -> impl FnMut(&'a str) -> IResult<&'a str, String> {
     move |input| {
         let non_commented_value = preceded(terminated(tag(tag_name), tag("\t")), to_tab);
         map(
-            tuple((non_commented_value, metadata_comment)),
+            (non_commented_value, metadata_comment),
             |(value, comment)| format!("{}{}", value, parenthetical(comment)),
-        )(input)
+        )
+        .parse(input)
     }
 }
 
-fn parenthetical(value: Option<String>) -> String {
+fn parenthetical(value: Option<&str>) -> String {
     match value {
         Some(v) => format!(" ({v})"),
         None => String::new(),
@@ -95,29 +74,32 @@ fn optional_string(input: &str) -> Option<&str> {
     }
 }
 
-fn metadata_comment(input: &str) -> IResult<&str, Option<String>> {
-    let (input, _) = tag("/")(input)?;
-    map(terminated(take_till(|c| c == '/'), tag("/")), |v| {
-        optional_string(v).map(String::from)
-    })(input)
+fn metadata_comment(input: &str) -> IResult<&str, Option<&str>> {
+    let (input, _) = tag("/").parse(input)?;
+    map(
+        terminated(take_till(|c| c == '/'), tag("/")),
+        optional_string,
+    )
+    .parse(input)
 }
 
 fn program_other(input: &str) -> IResult<&str, ProgramMetadata> {
     map(preceded(tag("!_TAG"), to_newline), |_| {
         ProgramMetadata::Other
-    })(input)
+    })
+    .parse(input)
 }
 
 fn program_author(input: &str) -> IResult<&str, ProgramMetadata> {
-    map(tag_value("!_TAG_PROGRAM_AUTHOR"), ProgramMetadata::Author)(input)
+    map(tag_value("!_TAG_PROGRAM_AUTHOR"), ProgramMetadata::Author).parse(input)
 }
 
 fn program_name(input: &str) -> IResult<&str, ProgramMetadata> {
-    map(tag_value("!_TAG_PROGRAM_NAME"), ProgramMetadata::Name)(input)
+    map(tag_value("!_TAG_PROGRAM_NAME"), ProgramMetadata::Name).parse(input)
 }
 
 fn program_version(input: &str) -> IResult<&str, ProgramMetadata> {
-    map(tag_value("!_TAG_PROGRAM_VERSION"), ProgramMetadata::Version)(input)
+    map(tag_value("!_TAG_PROGRAM_VERSION"), ProgramMetadata::Version).parse(input)
 }
 
 pub fn succeed<I: Clone, O, F: Copy + FnOnce() -> O, E: ParseError<I>>(
@@ -127,18 +109,18 @@ pub fn succeed<I: Clone, O, F: Copy + FnOnce() -> O, E: ParseError<I>>(
 }
 
 pub fn to_tab(input: &str) -> IResult<&str, &str> {
-    terminated(take_till(|c| c == '\t'), tag("\t"))(input)
+    terminated(take_till(|c| c == '\t'), tag("\t")).parse(input)
 }
 
 pub fn to_newline(input: &str) -> IResult<&str, &str> {
-    take_till(|c| c == '\n')(input)
+    take_till(|c| c == '\n').parse(input)
 }
 
 #[test]
 fn parses_metadata_comment() {
     assert_eq!(
         metadata_comment("/dhiebert@users.sourceforge.net/"),
-        Ok(("", Some("dhiebert@users.sourceforge.net".to_string())))
+        Ok(("", Some("dhiebert@users.sourceforge.net")))
     );
 }
 
