@@ -18,23 +18,23 @@ pub struct CliConfiguration<'a> {
 }
 
 impl<'a> CliConfiguration<'a> {
-    pub fn new(flags: &'a Flags, tokens: Vec<Token>) -> Self {
+    pub fn new(flags: &'a Flags, tokens: Vec<Token>) -> Result<Self, String> {
         let token_search_config = build_token_search_config(flags, tokens);
         let analysis_filter = build_analysis_filter(flags);
         let results = TokenSearchResults::generate_with_config(&token_search_config);
-        let project_configuration = load_and_parse_config()
+        let project_configuration = load_and_parse_config()?
             .best_match(&results)
             .unwrap_or_default();
         let outcome =
             TokenUsageResults::calculate(&token_search_config, &results, &project_configuration);
 
-        Self {
+        Ok(Self {
             flags,
             token_search_config,
             analysis_filter,
             project_configuration,
             outcome,
-        }
+        })
     }
 
     pub fn render(&self) {

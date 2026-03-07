@@ -4,7 +4,7 @@ use super::{
 };
 use project_configuration::ProjectConfigurations;
 
-pub struct LoadedProjectConfigurations(ProjectConfigurations);
+pub struct LoadedProjectConfigurations(Result<ProjectConfigurations, String>);
 
 impl LoadedProjectConfigurations {
     pub fn new() -> Self {
@@ -12,7 +12,10 @@ impl LoadedProjectConfigurations {
     }
 
     fn config_keys(&self) -> Vec<String> {
-        self.0.project_config_names()
+        match &self.0 {
+            Ok(configurations) => configurations.project_config_names(),
+            Err(_) => vec![],
+        }
     }
 }
 
@@ -22,15 +25,21 @@ impl CheckUp for LoadedProjectConfigurations {
     }
 
     fn status(&self) -> Status {
-        if self.config_keys().is_empty() {
-            Status::Warn(
-                "No project configurations were loaded; using default config instead.".to_string(),
-            )
-        } else {
-            Status::OK(format!(
-                "Loaded the following project configurations: {}",
-                self.config_keys().join(", ")
-            ))
+        match &self.0 {
+            Ok(_) => {
+                if self.config_keys().is_empty() {
+                    Status::Warn(
+                        "No project configurations were loaded; using default config instead."
+                            .to_string(),
+                    )
+                } else {
+                    Status::OK(format!(
+                        "Loaded the following project configurations: {}",
+                        self.config_keys().join(", ")
+                    ))
+                }
+            }
+            Err(error) => Status::Error(error.clone()),
         }
     }
 }

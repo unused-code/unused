@@ -41,10 +41,17 @@ pub fn run() {
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
         None => match Token::all(&tags_reader) {
             Ok((_, results)) => {
-                let configuration = CliConfiguration::new(&flags, results);
-                configuration.render();
-                if flags.harsh && !configuration.analyses().is_empty() {
-                    process::exit(1);
+                match CliConfiguration::new(&flags, results) {
+                    Ok(configuration) => {
+                        configuration.render();
+                        if flags.harsh && !configuration.analyses().is_empty() {
+                            process::exit(1);
+                        }
+                    }
+                    Err(error) => {
+                        error_message::failed_project_config_parse(&error);
+                        process::exit(1);
+                    }
                 }
             }
             Err(e) => {

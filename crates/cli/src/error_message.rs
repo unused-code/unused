@@ -17,3 +17,9 @@ pub fn failed_token_parse(err: &ReadCtagsError) {
     eprintln!("Error:");
     eprintln!("{}", err.to_string().cyan());
 }
+
+pub fn failed_project_config_parse(err: &str) {
+    eprintln!("{}", "Failed to load project configuration".red());
+    eprintln!();
+    eprintln!("{err}");
+}
