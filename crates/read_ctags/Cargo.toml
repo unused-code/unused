@@ -12,5 +12,5 @@ nom = { workspace = true }
 serde = { workspace = true }
 
 [dev-dependencies]
-totems = { workspace = true }
 serde_json = { workspace = true }
+totems = { workspace = true }

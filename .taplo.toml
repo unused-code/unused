@@ -1,0 +1,20 @@
+[[rule]]
+exclude = ["target/**"]
+include = ["**/*.toml"]
+
+[rule.formatting]
+reorder_arrays = false
+reorder_inline_tables = false
+reorder_keys = false
+
+[[rule]]
+include = ["**/Cargo.toml"]
+keys = [
+  "dependencies",
+  "dev-dependencies",
+  "build-dependencies",
+  "workspace.dependencies",
+]
+
+[rule.formatting]
+reorder_keys = true

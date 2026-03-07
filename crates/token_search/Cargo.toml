@@ -8,12 +8,12 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nom = { workspace = true }
 aho-corasick = "1.1"
-rayon = { workspace = true }
 codebase_files = { path = "../../crates/codebase_files" }
+indicatif = { workspace = true }
 itertools = { workspace = true }
+nom = { workspace = true }
+rayon = { workspace = true }
 read_ctags = { path = "../../crates/read_ctags" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-indicatif = { workspace = true }
