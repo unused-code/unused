@@ -135,6 +135,7 @@ impl ProjectConfigurations {
             config_file: Self::parse_path_prefixes(&contents.config_files),
             low_likelihood: Self::parse_low_likelihoods(&contents.auto_low_likelihood),
             matches_if: Self::parse_matches_if(&contents.matches_if),
+            method_aliases: vec![],
         }
     }
 

@@ -1,3 +1,4 @@
+use super::alias_rules::AliasRule;
 use super::value_assertion::{Assertion, AssertionConflict};
 use std::default::Default;
 use std::path::Path;
@@ -11,6 +12,7 @@ pub struct ProjectConfiguration {
     pub config_file: Vec<PathPrefix>,
     pub low_likelihood: Vec<LowLikelihoodConfig>,
     pub matches_if: Vec<Assertion>,
+    pub method_aliases: Vec<AliasRule>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -104,6 +106,7 @@ impl Default for ProjectConfiguration {
             config_file: vec![],
             low_likelihood: vec![],
             matches_if: vec![],
+            method_aliases: vec![],
         }
     }
 }
