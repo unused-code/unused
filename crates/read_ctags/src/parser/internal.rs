@@ -1,12 +1,12 @@
 use super::TagProgram;
 use nom::{
+    IResult,
     branch::alt,
     bytes::complete::{tag, take_till},
     combinator::map,
     error::ParseError,
-    multi::separated_list,
+    multi::separated_list0,
     sequence::{preceded, terminated, tuple},
-    IResult,
 };
 
 enum ProgramMetadata {
@@ -19,39 +19,39 @@ enum ProgramMetadata {
 impl ProgramMetadata {
     fn author(&self) -> Option<String> {
         match &self {
-            ProgramMetadata::Author(v) => Some(v.to_string()),
+            ProgramMetadata::Author(v) => Some(v.clone()),
             _ => None,
         }
     }
 
     fn name(&self) -> Option<String> {
         match &self {
-            ProgramMetadata::Name(v) => Some(v.to_string()),
+            ProgramMetadata::Name(v) => Some(v.clone()),
             _ => None,
         }
     }
 
     fn version(&self) -> Option<String> {
         match &self {
-            ProgramMetadata::Version(v) => Some(v.to_string()),
+            ProgramMetadata::Version(v) => Some(v.clone()),
             _ => None,
         }
     }
 }
 
-fn metadata_to_tag_program(metadata: Vec<ProgramMetadata>) -> TagProgram {
+fn metadata_to_tag_program(metadata: &[ProgramMetadata]) -> TagProgram {
     let name = metadata
         .iter()
         .find(|m| m.name().is_some())
-        .and_then(|m| m.name());
+        .and_then(ProgramMetadata::name);
     let author = metadata
         .iter()
         .find(|m| m.author().is_some())
-        .and_then(|m| m.author());
+        .and_then(ProgramMetadata::author);
     let version = metadata
         .iter()
         .find(|m| m.version().is_some())
-        .and_then(|m| m.version());
+        .and_then(ProgramMetadata::version);
 
     TagProgram {
         name,
@@ -62,8 +62,8 @@ fn metadata_to_tag_program(metadata: Vec<ProgramMetadata>) -> TagProgram {
 
 pub fn tag_metadata(input: &str) -> IResult<&str, TagProgram> {
     map(
-        terminated(separated_list(tag("\n"), tag_annotation), tag("\n")),
-        metadata_to_tag_program,
+        terminated(separated_list0(tag("\n"), tag_annotation), tag("\n")),
+        |metadata| metadata_to_tag_program(&metadata),
     )(input)
 }
 
@@ -83,8 +83,8 @@ fn tag_value<'a>(tag_name: &'a str) -> impl Fn(&'a str) -> IResult<&'a str, Stri
 
 fn parenthetical(value: Option<String>) -> String {
     match value {
-        Some(v) => format!(" ({})", v),
-        None => "".to_string(),
+        Some(v) => format!(" ({v})"),
+        None => String::new(),
     }
 }
 

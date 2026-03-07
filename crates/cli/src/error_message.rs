@@ -1,15 +1,19 @@
-use colored::*;
+use colored::Colorize;
 use read_ctags::ReadCtagsError;
 
-pub fn failed_token_parse(err: ReadCtagsError) {
+pub fn failed_token_parse(err: &ReadCtagsError) {
     eprintln!("{}", "Failed to parse tags".red());
-    eprintln!("");
+    eprintln!();
     eprintln!("Uh oh!");
-    eprintln!("");
-    eprintln!("It looks there's an issue with your ctags file; either it doesn't exist, or the formatting is off.");
-    eprintln!("");
-    eprintln!("Ensure you've installed Universal Ctags (https://ctags.io/) and re-run it within your application.");
-    eprintln!("");
+    eprintln!();
+    eprintln!(
+        "It looks there's an issue with your ctags file; either it doesn't exist, or the formatting is off."
+    );
+    eprintln!();
+    eprintln!(
+        "Ensure you've installed Universal Ctags (https://ctags.io/) and re-run it within your application."
+    );
+    eprintln!();
     eprintln!("Error:");
-    eprintln!("{}", format!("{}", err).cyan());
+    eprintln!("{}", err.to_string().cyan());
 }

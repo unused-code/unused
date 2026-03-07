@@ -2,14 +2,15 @@
 name = "project_configuration"
 version = "0.1.0"
 authors = ["Joshua Clayton <joshua.clayton@gmail.com>"]
-edition = "2018"
+edition = "2024"
 license = "MIT"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-yaml-rust = "0.4"
+serde = { workspace = true }
+serde_yaml = "0.9"
 token_search = { path = "../../crates/token_search" }
 
 [dev-dependencies]
-totems = "0.2.7"
+totems = { workspace = true }

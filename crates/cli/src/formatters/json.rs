@@ -1,4 +1,4 @@
-use super::internal::{configuration_warnings, CliConfiguration};
+use super::internal::{CliConfiguration, configuration_warnings};
 use serde_json;
 
 pub fn format(cli_config: &CliConfiguration) {

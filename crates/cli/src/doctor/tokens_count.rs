@@ -11,27 +11,27 @@ impl TokensCount {
     pub fn new(tags_reader: &TagsReader) -> Self {
         match Token::all(tags_reader) {
             Ok((_, results)) => Self::Success(results.len()),
-            Err(e) => Self::Failure(format!("{}", e)),
+            Err(e) => Self::Failure(format!("{e}")),
         }
     }
 }
 
 impl CheckUp for TokensCount {
-    fn name(&self) -> &str {
+    fn name(&self) -> &'static str {
         "Are tokens found in the application?"
     }
 
     fn status(&self) -> Status {
         match &self {
             Self::Success(ct) => {
-                let message = format!("{} token(s) found", ct);
+                let message = format!("{ct} token(s) found");
                 if ct < &5 {
                     Status::Warn(message)
                 } else {
                     Status::OK(message)
                 }
             }
-            Self::Failure(e) => Status::Error(e.to_string()),
+            Self::Failure(e) => Status::Error(e.clone()),
         }
     }
 }

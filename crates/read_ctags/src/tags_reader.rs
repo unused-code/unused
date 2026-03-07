@@ -5,12 +5,12 @@ use std::env::current_dir;
 use std::fmt::{Display, Formatter};
 use std::fs::File;
 use std::io;
-use std::io::prelude::*;
 use std::io::Error;
-use std::path::PathBuf;
+use std::io::prelude::*;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
-/// TagsReader provides a mechanism for attempting to read multiple ctags files until the first is
+/// `TagsReader` provides a mechanism for attempting to read multiple ctags files until the first is
 /// found
 pub struct TagsReader {
     filenames: Vec<PathBuf>,
@@ -46,7 +46,7 @@ impl Display for ReadCtagsError {
                     .join(", "),
                 err
             ),
-            ReadCtagsError::CtagsParseError(ref err) => write!(f, "{}", err),
+            ReadCtagsError::CtagsParseError(ref err) => write!(f, "{err}"),
         }
     }
 }
@@ -70,7 +70,7 @@ fn git_path() -> Option<PathBuf> {
     }
 }
 
-fn cwd_tags_paths(cwd: PathBuf) -> Vec<PathBuf> {
+fn cwd_tags_paths(cwd: &Path) -> Vec<PathBuf> {
     vec![cwd.join("tags"), cwd.join("tmp/tags")]
 }
 
@@ -80,11 +80,11 @@ impl Default for TagsReader {
 
         if let Ok(current_dir) = current_dir() {
             if let Some(app_git_path) = git_path() {
-                if app_git_path == PathBuf::from(".git") {
+                if app_git_path == Path::new(".git") {
                     filenames.push(current_dir.join(app_git_path).join("tags"));
-                    filenames.extend(cwd_tags_paths(current_dir));
+                    filenames.extend(cwd_tags_paths(&current_dir));
                 } else {
-                    filenames.extend(cwd_tags_paths(current_dir));
+                    filenames.extend(cwd_tags_paths(&current_dir));
                     filenames.push(app_git_path.join("tags"));
                     filenames.push(app_git_path.join("../tags"));
                     filenames.push(app_git_path.join("../tmp/tags"));
@@ -101,9 +101,13 @@ impl Default for TagsReader {
 
 impl TagsReader {
     /// Loads and parses the first tags file it finds
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when no tags file is found or parsing fails.
     pub fn load(&self) -> Result<TagsFile, ReadCtagsError> {
         self.read().and_then(|(ctags_path, contents)| {
-            CtagItem::parse(ctags_path, &contents).map_err(|e| e.into())
+            CtagItem::parse(ctags_path, &contents).map_err(std::convert::Into::into)
         })
     }
 
@@ -116,7 +120,7 @@ impl TagsReader {
     fn read(&self) -> Result<(PathBuf, String), ReadCtagsError> {
         Self::first_success(
             &self.filenames,
-            Error::new(io::ErrorKind::Other, "No file provided"),
+            Error::other("No file provided"),
             read_to_string_lossy,
         )
         .map_err(|e| ReadCtagsError::NoCtagsFile(self.filenames.clone(), e))
@@ -128,7 +132,7 @@ impl TagsReader {
         F: Fn(A) -> Result<B, C>,
     {
         let mut outcome = Err(default);
-        for x in values.iter() {
+        for x in values {
             outcome = f(x.clone()).map(|v| (x.clone(), v));
             if outcome.is_ok() {
                 break;

@@ -1,9 +1,10 @@
-use super::project_configuration::*;
+use super::project_configuration::{LowLikelihoodConfig, PathPrefix, ProjectConfiguration};
 use super::value_assertion::{Assertion, ValueMatcher};
+use serde::Deserialize;
+use serde_yaml::Value;
 use std::collections::{HashMap, HashSet};
 use std::include_str;
 use token_search::TokenSearchResults;
-use yaml_rust::{Yaml, YamlLoader};
 
 const PATH_STARTS_WITH: &str = "path_starts_with";
 const PATH_ENDS_WITH: &str = "path_ends_with";
@@ -14,7 +15,7 @@ const TOKEN_STARTS_WITH: &str = "token_starts_with";
 const TOKEN_ENDS_WITH: &str = "token_ends_with";
 const CLASS_OR_MODULE: &str = "class_or_module";
 const ALLOWED_TOKENS: &str = "allowed_tokens";
-const SUPPORTED_ASSERTIONS: [&'static str; 9] = [
+const SUPPORTED_ASSERTIONS: [&str; 9] = [
     PATH_STARTS_WITH,
     PATH_ENDS_WITH,
     PATH_EQUALS,
@@ -26,39 +27,69 @@ const SUPPORTED_ASSERTIONS: [&'static str; 9] = [
     ALLOWED_TOKENS,
 ];
 
+#[derive(Debug, Deserialize)]
+struct RawProjectConfiguration {
+    name: Option<String>,
+    #[serde(default)]
+    application_files: Vec<String>,
+    #[serde(default)]
+    test_files: Vec<String>,
+    #[serde(default)]
+    config_files: Vec<String>,
+    #[serde(default)]
+    auto_low_likelihood: Vec<RawLowLikelihoodConfig>,
+    #[serde(default)]
+    matches_if: Vec<HashMap<String, Value>>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawLowLikelihoodConfig {
+    name: Option<String>,
+    #[serde(flatten)]
+    assertions: HashMap<String, Value>,
+}
+
 pub struct ProjectConfigurations {
     configs: HashMap<String, ProjectConfiguration>,
 }
 
 impl ProjectConfigurations {
+    #[must_use]
     pub fn default_yaml() -> String {
         include_str!("default_config.yml").to_string()
     }
 
+    #[must_use]
     pub fn get(&self, name: &str) -> Option<&ProjectConfiguration> {
         self.configs.get(name)
     }
 
+    #[must_use]
     pub fn parse(contents: &str) -> Self {
-        let configs = match YamlLoader::load_from_str(contents) {
-            Ok(results) => Self::parse_all_from_yaml(&results),
-            _ => HashMap::new(),
-        };
+        let configs = serde_yaml::from_str::<Vec<RawProjectConfiguration>>(contents).map_or_else(
+            |_| HashMap::new(),
+            |results| Self::parse_all_from_yaml(&results),
+        );
         ProjectConfigurations { configs }
     }
 
+    #[must_use]
     pub fn project_config_names(&self) -> Vec<String> {
-        self.configs.keys().map(|v| v.to_owned()).collect()
+        self.configs
+            .keys()
+            .map(std::borrow::ToOwned::to_owned)
+            .collect()
     }
 
+    #[must_use]
     pub fn best_match(&self, results: &TokenSearchResults) -> Option<ProjectConfiguration> {
         self.configs
             .iter()
-            .filter(|(_, config)| config.codebase_config_match(results))
-            .nth(0)
+            .find(|(_, config)| config.codebase_config_match(results))
             .map(|(_, v)| v.clone())
     }
 
+    #[must_use]
     pub fn assertion_to_key(assertion: &Assertion) -> Option<&str> {
         match assertion {
             Assertion::TokenAssertion(ValueMatcher::StartsWith(_)) => Some(TOKEN_STARTS_WITH),
@@ -66,112 +97,103 @@ impl ProjectConfigurations {
             Assertion::TokenAssertion(ValueMatcher::Equals(_)) => Some(TOKEN_EQUALS),
             Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => Some(ALLOWED_TOKENS),
             Assertion::TokenAssertion(ValueMatcher::StartsWithCapital) => Some(CLASS_OR_MODULE),
-            Assertion::TokenAssertion(ValueMatcher::Contains(_)) => None,
+            Assertion::TokenAssertion(ValueMatcher::Contains(_))
+            | Assertion::PathAssertion(
+                ValueMatcher::ExactMatchOnAnyOf(_) | ValueMatcher::StartsWithCapital,
+            ) => None,
             Assertion::PathAssertion(ValueMatcher::StartsWith(_)) => Some(PATH_STARTS_WITH),
             Assertion::PathAssertion(ValueMatcher::EndsWith(_)) => Some(PATH_ENDS_WITH),
             Assertion::PathAssertion(ValueMatcher::Equals(_)) => Some(PATH_EQUALS),
-            Assertion::PathAssertion(ValueMatcher::ExactMatchOnAnyOf(_)) => None,
-            Assertion::PathAssertion(ValueMatcher::StartsWithCapital) => None,
             Assertion::PathAssertion(ValueMatcher::Contains(_)) => Some(PATH_CONTAINS),
         }
     }
 
-    fn parse_all_from_yaml(contents: &[Yaml]) -> HashMap<String, ProjectConfiguration> {
-        match contents {
-            [Yaml::Array(items)] => items.iter().filter(|i| !i["name"].is_badvalue()).fold(
-                HashMap::new(),
-                |mut acc, doc_with_name| {
-                    let config_name = doc_with_name["name"].as_str().unwrap_or("").to_string();
-                    acc.insert(
-                        config_name.to_string(),
-                        Self::parse_from_yaml(&config_name, &doc_with_name),
-                    );
-                    acc
-                },
-            ),
-            _ => HashMap::new(),
-        }
-    }
-
-    fn parse_from_yaml(config_name: &str, contents: &Yaml) -> ProjectConfiguration {
-        ProjectConfiguration {
-            name: String::from(config_name),
-            application_file: Self::parse_path_prefixes("application_files", contents),
-            test_file: Self::parse_path_prefixes("test_files", contents),
-            config_file: Self::parse_path_prefixes("config_files", contents),
-            low_likelihood: Self::parse_low_likelihoods(contents),
-            matches_if: Self::parse_matches_if(contents),
-        }
-    }
-
-    fn parse_path_prefixes(key: &str, contents: &Yaml) -> Vec<PathPrefix> {
-        match &contents[key] {
-            Yaml::Array(items) => items
-                .iter()
-                .map(|v| v.as_str())
-                .filter_map(|v| v)
-                .map(|v| PathPrefix::new(v))
-                .collect(),
-            _ => vec![],
-        }
-    }
-
-    fn parse_low_likelihoods(contents: &Yaml) -> Vec<LowLikelihoodConfig> {
-        match &contents["auto_low_likelihood"] {
-            Yaml::Array(items) => items
-                .iter()
-                .map(|i| Self::parse_low_likelihood_item(i))
-                .filter_map(|i| i)
-                .collect(),
-            _ => vec![],
-        }
-    }
-
-    fn parse_matches_if(contents: &Yaml) -> Vec<Assertion> {
-        match &contents["matches_if"] {
-            Yaml::Array(items) => items
-                .iter()
-                .flat_map(|i| Self::parse_individual_matches_if(i))
-                .collect(),
-            _ => vec![],
-        }
-    }
-
-    fn parse_individual_matches_if(contents: &Yaml) -> Vec<Assertion> {
-        SUPPORTED_ASSERTIONS
+    fn parse_all_from_yaml(
+        contents: &[RawProjectConfiguration],
+    ) -> HashMap<String, ProjectConfiguration> {
+        contents
             .iter()
-            .map(|&k| match &contents[k] {
-                Yaml::String(v) => Self::parse_single_assertion(k, &v),
-                _ => None,
+            .filter_map(|config| {
+                config.name.as_ref().map(|config_name| {
+                    (
+                        config_name.clone(),
+                        Self::parse_from_yaml(config_name, config),
+                    )
+                })
             })
-            .filter_map(|a| a)
             .collect()
     }
 
-    fn parse_low_likelihood_item(contents: &Yaml) -> Option<LowLikelihoodConfig> {
-        match &contents["name"] {
-            Yaml::String(name) => Some(LowLikelihoodConfig {
-                name: name.to_string(),
-                matchers: SUPPORTED_ASSERTIONS
-                    .iter()
-                    .map(|a| Self::parse_assertion_row(a, contents))
-                    .filter_map(|a| a)
-                    .collect(),
-            }),
-            _ => None,
+    fn parse_from_yaml(
+        config_name: &str,
+        contents: &RawProjectConfiguration,
+    ) -> ProjectConfiguration {
+        ProjectConfiguration {
+            name: String::from(config_name),
+            application_file: Self::parse_path_prefixes(&contents.application_files),
+            test_file: Self::parse_path_prefixes(&contents.test_files),
+            config_file: Self::parse_path_prefixes(&contents.config_files),
+            low_likelihood: Self::parse_low_likelihoods(&contents.auto_low_likelihood),
+            matches_if: Self::parse_matches_if(&contents.matches_if),
         }
     }
 
-    fn parse_assertion_row(key: &str, contents: &Yaml) -> Option<Assertion> {
-        match &contents[key] {
-            Yaml::Boolean(val) => Self::parse_boolean_assertion(key, val),
-            Yaml::String(val) => Self::parse_single_assertion(key, val),
-            Yaml::Array(vals) => Self::parse_multiple_assertions(
-                key,
-                vals.iter()
-                    .filter_map(|v| v.clone().into_string())
-                    .collect(),
-            ),
+    fn parse_path_prefixes(paths: &[String]) -> Vec<PathPrefix> {
+        paths.iter().map(|value| PathPrefix::new(value)).collect()
+    }
+
+    fn parse_low_likelihoods(contents: &[RawLowLikelihoodConfig]) -> Vec<LowLikelihoodConfig> {
+        contents
+            .iter()
+            .filter_map(Self::parse_low_likelihood_item)
+            .collect()
+    }
+
+    fn parse_matches_if(contents: &[HashMap<String, Value>]) -> Vec<Assertion> {
+        contents
+            .iter()
+            .flat_map(Self::parse_individual_matches_if)
+            .collect()
+    }
+
+    fn parse_individual_matches_if(contents: &HashMap<String, Value>) -> Vec<Assertion> {
+        SUPPORTED_ASSERTIONS
+            .iter()
+            .filter_map(|assertion| {
+                contents
+                    .get(*assertion)
+                    .and_then(|value| Self::parse_assertion_row(assertion, value))
+            })
+            .collect()
+    }
+
+    fn parse_low_likelihood_item(contents: &RawLowLikelihoodConfig) -> Option<LowLikelihoodConfig> {
+        contents.name.as_ref().map(|name| LowLikelihoodConfig {
+            name: name.clone(),
+            matchers: SUPPORTED_ASSERTIONS
+                .iter()
+                .filter_map(|assertion| {
+                    contents
+                        .assertions
+                        .get(*assertion)
+                        .and_then(|value| Self::parse_assertion_row(assertion, value))
+                })
+                .collect(),
+        })
+    }
+
+    fn parse_assertion_row(key: &str, contents: &Value) -> Option<Assertion> {
+        match contents {
+            Value::Bool(value) => Self::parse_boolean_assertion(key, *value),
+            Value::String(value) => Self::parse_single_assertion(key, value),
+            Value::Sequence(values) => {
+                let parsed_values = values
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .map(ToString::to_string)
+                    .collect::<Vec<String>>();
+                Self::parse_multiple_assertions(key, parsed_values.as_slice())
+            }
             _ => None,
         }
     }
@@ -203,7 +225,7 @@ impl ProjectConfigurations {
         }
     }
 
-    fn parse_multiple_assertions(key: &str, val: Vec<String>) -> Option<Assertion> {
+    fn parse_multiple_assertions(key: &str, val: &[String]) -> Option<Assertion> {
         match key {
             ALLOWED_TOKENS => {
                 let values: HashSet<_> = val.iter().cloned().collect();
@@ -215,7 +237,7 @@ impl ProjectConfigurations {
         }
     }
 
-    fn parse_boolean_assertion(key: &str, val: &bool) -> Option<Assertion> {
+    fn parse_boolean_assertion(key: &str, val: bool) -> Option<Assertion> {
         match (key, val) {
             (CLASS_OR_MODULE, true) => {
                 Some(Assertion::TokenAssertion(ValueMatcher::StartsWithCapital))
@@ -327,7 +349,7 @@ mod tests {
                 matchers: vec![
                     Assertion::PathAssertion(ValueMatcher::EndsWith(String::from(".rb"))),
                     Assertion::TokenAssertion(ValueMatcher::ExactMatchOnAnyOf(
-                        vec![
+                        [
                             String::from("new?"),
                             String::from("index?"),
                             String::from("show?")

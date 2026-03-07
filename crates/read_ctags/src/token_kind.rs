@@ -1,7 +1,7 @@
 use super::language::Language;
 use serde::{Deserialize, Serialize};
 
-/// TokenKind is an enum which represents different types of tokens
+/// `TokenKind` is an enum which represents different types of tokens
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, Serialize, Deserialize)]
 #[allow(missing_docs)]
 pub enum TokenKind {
@@ -197,39 +197,44 @@ static LOOKUP: [(Language, char, TokenKind); 107] = [
 ];
 
 impl TokenKind {
-    /// Construct a TokenKind given a language (or lack thereof) with a character
+    /// Construct a `TokenKind` given a language (or lack thereof) with a character
     ///
     /// This is based off of Universal Ctags' generated list:
     ///   $ ctags --list-kinds-full
     ///
     /// This list is not comprehensive in that it is based off of the languages accounted for.
+    #[must_use]
     pub fn from_ctag(lang: Option<Language>, identifier: char) -> TokenKind {
         LOOKUP
             .iter()
             .filter(|(l, c, _)| Some(*l) == lang && *c == identifier)
             .nth(0)
-            .map(|(_, _, t)| *t)
-            .unwrap_or(match lang {
-                Some(Language::SVG) => Self::from_ctag(Some(Language::XML), identifier),
-                Some(l) => TokenKind::MissingLanguageToken(l, identifier),
-                None => TokenKind::Unknown(identifier),
-            })
+            .map_or(
+                match lang {
+                    Some(Language::SVG) => Self::from_ctag(Some(Language::XML), identifier),
+                    Some(l) => TokenKind::MissingLanguageToken(l, identifier),
+                    None => TokenKind::Unknown(identifier),
+                },
+                |(_, _, t)| *t,
+            )
     }
 
     /// Calculate the character given an optional language and kind
+    #[must_use]
     pub fn to_token_char(&self, lang: Option<Language>) -> char {
         match *self {
-            TokenKind::Unknown(c) => c,
-            TokenKind::MissingLanguageToken(_, c) => c,
+            TokenKind::Unknown(c) | TokenKind::MissingLanguageToken(_, c) => c,
             _ => LOOKUP
                 .iter()
                 .filter(|(l, _, t)| Some(*l) == lang && t == self)
                 .nth(0)
-                .map(|(_, c, _)| *c)
-                .unwrap_or(match lang {
-                    Some(Language::SVG) => self.to_token_char(Some(Language::XML)),
-                    _ => ' ',
-                }),
+                .map_or(
+                    match lang {
+                        Some(Language::SVG) => self.to_token_char(Some(Language::XML)),
+                        _ => ' ',
+                    },
+                    |(_, c, _)| *c,
+                ),
         }
     }
 }

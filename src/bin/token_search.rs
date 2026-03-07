@@ -5,8 +5,10 @@ fn main() {
     let tags_reader = TagsReader::default();
     match Token::all(&tags_reader) {
         Ok((_, outcome)) => {
-            let mut config = TokenSearchConfig::default();
-            config.tokens = outcome;
+            let config = TokenSearchConfig {
+                tokens: outcome,
+                ..TokenSearchConfig::default()
+            };
             let results = TokenSearchResults::generate_with_config(&config);
 
             println!("{}", serde_json::to_string(&results).unwrap());

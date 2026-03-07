@@ -15,16 +15,11 @@ pub struct AnalyzedToken {
 impl From<&TokenUsage> for AnalyzedToken {
     fn from(usage: &TokenUsage) -> Self {
         AnalyzedToken {
-            token: usage.result.token.token.to_string(),
-            first_path: usage.result.token.first_path().to_path_buf(),
+            token: usage.result.token.token.clone(),
+            first_path: usage.result.token.first_path().clone(),
             likelihood_status: usage.usage_likelihood.status,
             likelihood_reason: usage.usage_likelihood.reason.clone(),
-            files: usage
-                .result
-                .occurrences
-                .keys()
-                .map(|v| v.to_path_buf())
-                .collect(),
+            files: usage.result.occurrences.keys().cloned().collect(),
             defined_paths: usage.result.defined_paths(),
             occurred_paths: usage.result.occurred_paths(),
         }

@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 mod loader;
 mod project_configuration;
 mod value_assertion;

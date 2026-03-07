@@ -1,5 +1,4 @@
 use read_ctags::TagsReader;
-use serde_json;
 
 fn main() {
     match TagsReader::default().load() {
