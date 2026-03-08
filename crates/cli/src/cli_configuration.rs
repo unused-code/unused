@@ -2,7 +2,7 @@ use super::analyzed_token::AnalyzedToken;
 use super::formatters;
 use super::project_configurations_loader::load_and_parse_config;
 use super::{Flags, Format};
-use project_configuration::{AssertionConflict, ProjectConfiguration};
+use project_configuration::{AssertionConflict, ProjectConfiguration, expand_alias_candidates};
 use std::collections::{HashMap, HashSet};
 use token_analysis::{
     AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults, UsageLikelihoodStatus,
@@ -18,23 +18,26 @@ pub struct CliConfiguration<'a> {
 }
 
 impl<'a> CliConfiguration<'a> {
-    pub fn new(flags: &'a Flags, tokens: Vec<Token>) -> Self {
-        let token_search_config = build_token_search_config(flags, tokens);
+    pub fn new(flags: &'a Flags, tokens: Vec<Token>) -> Result<Self, String> {
+        let mut token_search_config = build_token_search_config(flags, tokens);
         let analysis_filter = build_analysis_filter(flags);
-        let results = TokenSearchResults::generate_with_config(&token_search_config);
-        let project_configuration = load_and_parse_config()
-            .best_match(&results)
+        let initial_results = TokenSearchResults::generate_with_config(&token_search_config);
+        let project_configuration = load_and_parse_config()?
+            .best_match(&initial_results)
             .unwrap_or_default();
+        token_search_config.token_aliases =
+            build_alias_search_terms(&token_search_config.tokens, &project_configuration);
+        let results = TokenSearchResults::generate_with_config(&token_search_config);
         let outcome =
             TokenUsageResults::calculate(&token_search_config, &results, &project_configuration);
 
-        Self {
+        Ok(Self {
             flags,
             token_search_config,
             analysis_filter,
             project_configuration,
             outcome,
-        }
+        })
     }
 
     pub fn render(&self) {
@@ -178,4 +181,66 @@ where
     T: std::hash::Hash + Eq + std::clone::Clone,
 {
     input.iter().cloned().collect::<HashSet<_>>()
+}
+
+fn build_alias_search_terms(
+    tokens: &[Token],
+    project_configuration: &ProjectConfiguration,
+) -> HashMap<String, HashSet<String>> {
+    if project_configuration.method_aliases.is_empty() {
+        return HashMap::new();
+    }
+
+    tokens
+        .iter()
+        .filter_map(|token| {
+            let generated_terms =
+                expand_alias_candidates(&token.token, &project_configuration.method_aliases);
+            let alias_terms = generated_terms
+                .into_iter()
+                .filter(|candidate| candidate != &token.token)
+                .collect::<HashSet<_>>();
+
+            if alias_terms.is_empty() {
+                None
+            } else {
+                Some((token.token.clone(), alias_terms))
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use project_configuration::ProjectConfigurations;
+
+    #[test]
+    fn build_alias_search_terms_includes_have_alias_for_has_predicate() {
+        let configuration = ProjectConfigurations::parse(
+            "
+- name: Rails
+  method_aliases:
+    - from: '*?'
+      to: be_{}
+    - from: 'has_*?'
+      to: have_{}
+",
+        )
+        .expect("valid project configuration")
+        .get("Rails")
+        .cloned()
+        .expect("rails config");
+
+        let aliases = build_alias_search_terms(
+            &[Token::new("has_attribute?".to_string(), Default::default())],
+            &configuration,
+        );
+        let terms = aliases
+            .get("has_attribute?")
+            .expect("alias terms for has_attribute?");
+
+        assert!(terms.contains("have_attribute"));
+        assert!(terms.contains("be_has_attribute"));
+    }
 }

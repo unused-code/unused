@@ -1,3 +1,4 @@
+use super::alias_rules::AliasRule;
 use super::value_assertion::{Assertion, AssertionConflict};
 use std::default::Default;
 use std::path::Path;
@@ -11,6 +12,7 @@ pub struct ProjectConfiguration {
     pub config_file: Vec<PathPrefix>,
     pub low_likelihood: Vec<LowLikelihoodConfig>,
     pub matches_if: Vec<Assertion>,
+    pub method_aliases: Vec<AliasRule>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -36,7 +38,17 @@ pub struct LowLikelihoodConfig {
 
 impl LowLikelihoodConfig {
     pub fn matches(&self, token_search_result: &TokenSearchResult) -> bool {
-        self.matchers.iter().all(|a| a.matches(token_search_result))
+        self.matches_with_aliases(token_search_result, &[])
+    }
+
+    pub fn matches_with_aliases(
+        &self,
+        token_search_result: &TokenSearchResult,
+        alias_rules: &[AliasRule],
+    ) -> bool {
+        self.matchers
+            .iter()
+            .all(|a| a.matches_with_aliases(token_search_result, alias_rules))
     }
 
     pub fn conflicts(&self) -> Vec<AssertionConflict> {
@@ -104,6 +116,7 @@ impl Default for ProjectConfiguration {
             config_file: vec![],
             low_likelihood: vec![],
             matches_if: vec![],
+            method_aliases: vec![],
         }
     }
 }
@@ -116,7 +129,7 @@ impl ProjectConfiguration {
     ) -> Option<&LowLikelihoodConfig> {
         self.low_likelihood
             .iter()
-            .find(|ll| ll.matches(token_search_result))
+            .find(|ll| ll.matches_with_aliases(token_search_result, &self.method_aliases))
     }
 
     #[must_use]
@@ -125,7 +138,7 @@ impl ProjectConfiguration {
             results
                 .value()
                 .iter()
-                .any(|result| assertion.matches(result))
+                .any(|result| assertion.matches_with_aliases(result, &self.method_aliases))
         })
     }
 }
@@ -134,6 +147,43 @@ impl ProjectConfiguration {
 mod tests {
     use super::super::value_assertion::*;
     use super::*;
+    use crate::ProjectConfigurations;
+    use crate::alias_rules::{AliasFromPattern, AliasTemplate, AliasTemplatePart};
+    use std::collections::HashMap;
+    use token_search::Token;
+
+    fn alias_rule(
+        from_prefix: &str,
+        from_suffix: &str,
+        parts: Vec<AliasTemplatePart>,
+    ) -> AliasRule {
+        AliasRule::new(
+            AliasFromPattern {
+                raw: format!("{from_prefix}*{from_suffix}"),
+                prefix: from_prefix.to_string(),
+                suffix: from_suffix.to_string(),
+            },
+            AliasTemplate {
+                raw: "test".to_string(),
+                parts,
+            },
+        )
+    }
+
+    fn token_search_result(token_value: &str) -> TokenSearchResult {
+        TokenSearchResult {
+            token: Token::new(token_value.to_string(), Default::default()),
+            occurrences: HashMap::new(),
+        }
+    }
+
+    fn rails_configuration_from_yaml(yaml: &str) -> ProjectConfiguration {
+        ProjectConfigurations::parse(yaml)
+            .expect("expected valid project configuration yaml")
+            .get("Rails")
+            .cloned()
+            .expect("expected Rails configuration")
+    }
 
     #[test]
     fn low_likelihood_highlights_logical_issues_with_assertions() {
@@ -211,5 +261,106 @@ mod tests {
         };
 
         assert_eq!(no_conflict.conflicts(), vec![]);
+    }
+
+    #[test]
+    fn low_likelihood_match_is_unchanged_without_alias_rules() {
+        let configuration = ProjectConfiguration {
+            low_likelihood: vec![
+                LowLikelihoodConfig {
+                    name: String::from("alias-style"),
+                    matchers: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                        "be_admin".to_string(),
+                    ))],
+                },
+                LowLikelihoodConfig {
+                    name: String::from("direct"),
+                    matchers: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                        "admin?".to_string(),
+                    ))],
+                },
+            ],
+            ..ProjectConfiguration::default()
+        };
+
+        let result = token_search_result("admin?");
+        let matched = configuration
+            .low_likelihood_match(&result)
+            .expect("expected direct matcher to match");
+
+        assert_eq!(matched.name, "direct");
+    }
+
+    #[test]
+    fn low_likelihood_match_can_diverge_when_alias_rules_exist() {
+        let configuration = ProjectConfiguration {
+            low_likelihood: vec![LowLikelihoodConfig {
+                name: String::from("alias-style"),
+                matchers: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                    "be_admin".to_string(),
+                ))],
+            }],
+            method_aliases: vec![alias_rule(
+                "",
+                "?",
+                vec![
+                    AliasTemplatePart::Literal("be_".to_string()),
+                    AliasTemplatePart::Capture(vec![]),
+                ],
+            )],
+            ..ProjectConfiguration::default()
+        };
+
+        let result = token_search_result("admin?");
+        let matched = configuration
+            .low_likelihood_match(&result)
+            .expect("expected alias-enabled matcher to match");
+
+        assert_eq!(matched.name, "alias-style");
+    }
+
+    #[test]
+    fn low_likelihood_match_supports_canonical_alias_equivalence_from_yaml() {
+        let configuration = rails_configuration_from_yaml(
+            "
+- name: Rails
+  method_aliases:
+    - from: '*?'
+      to: be_{}
+    - from: 'has_*?'
+      to: have_{}
+    - from: '*Validator'
+      to: '{snakecase}'
+  auto_low_likelihood:
+    - name: be-style
+      token_equals: be_admin
+    - name: have-style
+      token_equals: have_results
+    - name: snakecase-style
+      token_equals: http
+",
+        );
+
+        assert_eq!(
+            configuration
+                .low_likelihood_match(&token_search_result("admin?"))
+                .expect("expected be-style alias match")
+                .name,
+            "be-style"
+        );
+        assert_eq!(
+            configuration
+                .low_likelihood_match(&token_search_result("has_results?"))
+                .expect("expected have-style alias match")
+                .name,
+            "have-style"
+        );
+        assert_eq!(
+            configuration
+                .low_likelihood_match(&token_search_result("HTTPValidator"))
+                .expect("expected snakecase-style alias match")
+                .name,
+            "snakecase-style"
+        );
     }
 }

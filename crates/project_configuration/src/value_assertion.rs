@@ -1,3 +1,4 @@
+use super::alias_rules::{AliasRule, expand_alias_candidates};
 use std::collections::HashSet;
 use token_search::TokenSearchResult;
 
@@ -10,6 +11,15 @@ pub enum Assertion {
 impl Assertion {
     #[must_use]
     pub fn matches(&self, token_search_result: &TokenSearchResult) -> bool {
+        self.matches_with_aliases(token_search_result, &[])
+    }
+
+    #[must_use]
+    pub fn matches_with_aliases(
+        &self,
+        token_search_result: &TokenSearchResult,
+        alias_rules: &[AliasRule],
+    ) -> bool {
         match self {
             Assertion::PathAssertion(matcher) => token_search_result
                 .token
@@ -17,7 +27,9 @@ impl Assertion {
                 .iter()
                 .filter_map(|path| path.to_str())
                 .any(|path| matcher.check(path)),
-            Assertion::TokenAssertion(matcher) => matcher.check(&token_search_result.token.token),
+            Assertion::TokenAssertion(matcher) => {
+                matcher.check_with_aliases(&token_search_result.token.token, alias_rules)
+            }
         }
     }
 
@@ -75,11 +87,42 @@ impl ValueMatcher {
             ValueMatcher::Equals(_) | ValueMatcher::ExactMatchOnAnyOf(_)
         )
     }
+
+    #[must_use]
+    pub fn check_with_aliases(&self, haystack: &str, alias_rules: &[AliasRule]) -> bool {
+        if alias_rules.is_empty() {
+            return self.check(haystack);
+        }
+
+        match self {
+            ValueMatcher::Equals(needle) => candidate_sets_overlap(
+                &expand_alias_candidates(haystack, alias_rules),
+                &expand_alias_candidates(needle, alias_rules),
+            ),
+            ValueMatcher::ExactMatchOnAnyOf(values) => {
+                let haystack_candidates = expand_alias_candidates(haystack, alias_rules);
+                values.iter().any(|value| {
+                    candidate_sets_overlap(
+                        &haystack_candidates,
+                        &expand_alias_candidates(value, alias_rules),
+                    )
+                })
+            }
+            _ => self.check(haystack),
+        }
+    }
+}
+
+fn candidate_sets_overlap(first: &HashSet<String>, second: &HashSet<String>) -> bool {
+    first.iter().any(|candidate| second.contains(candidate))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::alias_rules::{
+        AliasFromPattern, AliasTemplate, AliasTemplatePart, AliasTransform, render_alias_template,
+    };
 
     fn foo() -> String {
         String::from("foo")
@@ -132,5 +175,263 @@ mod tests {
         assert!(!ValueMatcher::Equals(foo()).check("Foo"));
         assert!(!ValueMatcher::Equals(foo()).check(" foo"));
         assert!(!ValueMatcher::Equals(foo()).check("foo "));
+    }
+
+    fn alias_rule(
+        from_prefix: &str,
+        from_suffix: &str,
+        parts: Vec<AliasTemplatePart>,
+    ) -> AliasRule {
+        AliasRule::new(
+            AliasFromPattern {
+                raw: format!("{from_prefix}*{from_suffix}"),
+                prefix: from_prefix.to_string(),
+                suffix: from_suffix.to_string(),
+            },
+            AliasTemplate {
+                raw: "test".to_string(),
+                parts,
+            },
+        )
+    }
+
+    #[test]
+    fn expands_alias_candidates_and_dedupes_collisions() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture(vec![]),
+                    ],
+                ),
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture(vec![]),
+                    ],
+                ),
+            ],
+        );
+
+        let expected = HashSet::from([input.to_string(), "be_admin".to_string()]);
+        assert_eq!(candidates, expected);
+    }
+
+    #[test]
+    fn expands_alias_candidates_with_distinct_outputs_and_drops_self_map() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[
+                alias_rule("", "?", vec![AliasTemplatePart::Capture(vec![])]),
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture(vec![]),
+                    ],
+                ),
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("is_".to_string()),
+                        AliasTemplatePart::Capture(vec![]),
+                    ],
+                ),
+            ],
+        );
+
+        let expected = HashSet::from([
+            input.to_string(),
+            "admin".to_string(),
+            "be_admin".to_string(),
+            "is_admin".to_string(),
+        ]);
+        assert_eq!(candidates, expected);
+    }
+
+    #[test]
+    fn expands_alias_candidates_drops_no_op_generated_values() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[alias_rule("", "", vec![AliasTemplatePart::Capture(vec![])])],
+        );
+
+        let expected = HashSet::from([input.to_string()]);
+        assert_eq!(candidates, expected);
+    }
+
+    #[test]
+    fn render_alias_template_preserves_capture_characters() {
+        let rendered = render_alias_template(
+            "ready!",
+            &[
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        );
+
+        assert_eq!(rendered, "be_ready!");
+    }
+
+    #[test]
+    fn render_alias_template_supports_snakecase_capture() {
+        let rendered = render_alias_template(
+            "HTTPValidator",
+            &[AliasTemplatePart::Capture(vec![AliasTransform::Snakecase])],
+        );
+
+        assert_eq!(rendered, "http_validator");
+    }
+
+    #[test]
+    fn check_with_aliases_matches_equals_when_aliases_overlap() {
+        let matcher = ValueMatcher::Equals("be_admin".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        )];
+
+        assert!(!matcher.check("admin?"));
+        assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_wildcard_question_equivalence() {
+        let matcher = ValueMatcher::Equals("be_admin".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        )];
+
+        assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_has_prefix_equivalence() {
+        let matcher = ValueMatcher::Equals("have_feature".to_string());
+        let aliases = vec![alias_rule(
+            "has_",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("have_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        )];
+
+        assert!(!matcher.check("has_feature?"));
+        assert!(matcher.check_with_aliases("has_feature?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_snakecase_validator_equivalence() {
+        let matcher = ValueMatcher::Equals("email".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "Validator",
+            vec![AliasTemplatePart::Capture(vec![AliasTransform::Snakecase])],
+        )];
+
+        assert!(!matcher.check("EmailValidator"));
+        assert!(matcher.check_with_aliases("EmailValidator", &aliases));
+    }
+
+    #[test]
+    fn expands_alias_candidates_applies_rules_in_one_pass_only() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture(vec![]),
+                    ],
+                ),
+                alias_rule(
+                    "be_",
+                    "",
+                    vec![
+                        AliasTemplatePart::Literal("assert_".to_string()),
+                        AliasTemplatePart::Capture(vec![]),
+                    ],
+                ),
+            ],
+        );
+
+        let expected = HashSet::from([input.to_string(), "be_admin".to_string()]);
+        assert_eq!(candidates, expected);
+        assert!(!candidates.contains("assert_admin"));
+    }
+
+    #[test]
+    fn check_with_aliases_keeps_direct_equals_match_when_aliases_exist() {
+        let matcher = ValueMatcher::Equals("be_admin".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        )];
+
+        assert!(matcher.check("be_admin"));
+        assert!(matcher.check_with_aliases("be_admin", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_exact_match_on_any_of_when_aliases_overlap() {
+        let matcher = ValueMatcher::ExactMatchOnAnyOf(
+            ["be_admin".to_string(), "be_staff".to_string()]
+                .into_iter()
+                .collect(),
+        );
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        )];
+
+        assert!(!matcher.check("admin?"));
+        assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_keeps_partial_matchers_unchanged() {
+        let matcher = ValueMatcher::StartsWith("be_".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture(vec![]),
+            ],
+        )];
+
+        assert!(!matcher.check_with_aliases("admin?", &aliases));
     }
 }
