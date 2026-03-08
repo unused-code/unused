@@ -24,6 +24,11 @@ pub struct TokenSearchConfig {
     pub filter_tokens: fn(&Token) -> bool,
     /// Tokens to be used when searching
     pub tokens: Vec<Token>,
+    /// Additional search terms per token key (for example alias-derived forms).
+    ///
+    /// Keys are canonical token values from `tokens`; values are extra terms that should count as
+    /// occurrences for that canonical token.
+    pub token_aliases: HashMap<String, HashSet<String>>,
     /// Filenames to search against
     pub files: Vec<PathBuf>,
     /// Should a progress bar be displayed?
@@ -79,6 +84,7 @@ impl Default for TokenSearchConfig {
                     && !t.only_ctag(|ct| ct.kind == TokenKind::RSpecDescribe)
             },
             tokens: vec![],
+            token_aliases: HashMap::new(),
             files: CodebaseFiles::all().paths,
             display_progress: true,
             language_restriction: LanguageRestriction::Except(
@@ -160,7 +166,8 @@ impl TokenSearchResults {
             .filter(|t| config.filter_token(t) && config.filter_language(t))
             .collect();
 
-        let tokens: Vec<_> = filtered_results.iter().map(|r| &r.token).collect();
+        let (tokens, pattern_to_token_indices) =
+            build_search_patterns(&filtered_results, &config.token_aliases);
         let Ok(ac) = AhoCorasickBuilder::new()
             .match_kind(MatchKind::LeftmostLongest)
             .build(tokens)
@@ -176,7 +183,9 @@ impl TokenSearchResults {
                 if let Ok(contents) = Self::read_file(f) {
                     let mut counts: HashMap<usize, usize> = HashMap::new();
                     for matched in ac.find_iter(&contents) {
-                        *counts.entry(matched.pattern().as_usize()).or_insert(0) += 1;
+                        for token_idx in &pattern_to_token_indices[matched.pattern().as_usize()] {
+                            *counts.entry(*token_idx).or_insert(0) += 1;
+                        }
                     }
 
                     for (key, res) in counts {
@@ -213,6 +222,42 @@ impl TokenSearchResults {
 
         Ok(contents)
     }
+}
+
+fn build_search_patterns<'a>(
+    filtered_results: &[&'a Token],
+    token_aliases: &HashMap<String, HashSet<String>>,
+) -> (Vec<String>, Vec<Vec<usize>>) {
+    let mut patterns: Vec<String> = Vec::new();
+    let mut pattern_to_token_indices: Vec<Vec<usize>> = Vec::new();
+    let mut pattern_index_by_term: HashMap<String, usize> = HashMap::new();
+
+    for (token_idx, token) in filtered_results.iter().enumerate() {
+        let mut search_terms = HashSet::from([token.token.clone()]);
+        if let Some(alias_terms) = token_aliases.get(&token.token) {
+            search_terms.extend(alias_terms.iter().cloned());
+        }
+
+        let mut ordered_terms = search_terms.into_iter().collect::<Vec<_>>();
+        ordered_terms.sort();
+
+        for search_term in ordered_terms {
+            if search_term.is_empty() {
+                continue;
+            }
+
+            if let Some(existing_pattern_idx) = pattern_index_by_term.get(&search_term) {
+                pattern_to_token_indices[*existing_pattern_idx].push(token_idx);
+            } else {
+                let pattern_idx = patterns.len();
+                pattern_index_by_term.insert(search_term.clone(), pattern_idx);
+                patterns.push(search_term);
+                pattern_to_token_indices.push(vec![token_idx]);
+            }
+        }
+    }
+
+    (patterns, pattern_to_token_indices)
 }
 
 impl Serialize for TokenSearchResults {
@@ -255,5 +300,70 @@ impl TokenSearchResult {
 
     fn all_occurred_paths(&self) -> HashSet<PathBuf> {
         self.occurrences.keys().cloned().collect()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    fn config_for_file(path: &PathBuf, tokens: Vec<Token>) -> TokenSearchConfig {
+        TokenSearchConfig {
+            filter_tokens: |_| true,
+            tokens,
+            files: vec![path.clone()],
+            display_progress: false,
+            language_restriction: LanguageRestriction::NoRestriction,
+            ..TokenSearchConfig::default()
+        }
+    }
+
+    #[test]
+    fn search_counts_alias_occurrences_against_canonical_token() {
+        let path = std::env::temp_dir().join(format!(
+            "unused-token-search-alias-{}-1.rb",
+            std::process::id()
+        ));
+        fs::write(&path, "expect(span_stub).to have_attribute(\"x\")\n").expect("write");
+
+        let token = Token::new("has_attribute?".to_string(), Default::default());
+        let mut config = config_for_file(&path, vec![token]);
+        config.token_aliases.insert(
+            "has_attribute?".to_string(),
+            HashSet::from([String::from("have_attribute")]),
+        );
+
+        let results = TokenSearchResults::generate_with_config(&config);
+        let has_attribute = results
+            .value()
+            .iter()
+            .find(|result| result.token.token == "has_attribute?")
+            .expect("canonical token result");
+
+        assert_eq!(has_attribute.occurrences.get(&path), Some(&1));
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn search_without_alias_term_does_not_report_alias_only_usage() {
+        let path = std::env::temp_dir().join(format!(
+            "unused-token-search-alias-{}-2.rb",
+            std::process::id()
+        ));
+        fs::write(&path, "expect(span_stub).to have_attribute(\"x\")\n").expect("write");
+
+        let token = Token::new("has_attribute?".to_string(), Default::default());
+        let config = config_for_file(&path, vec![token]);
+        let results = TokenSearchResults::generate_with_config(&config);
+
+        assert!(
+            results
+                .value()
+                .iter()
+                .all(|result| result.token.token != "has_attribute?"),
+            "alias-only usage should not appear without alias search terms"
+        );
+        let _ = fs::remove_file(&path);
     }
 }

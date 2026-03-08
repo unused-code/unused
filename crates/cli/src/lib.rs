@@ -40,20 +40,18 @@ pub fn run() {
         Some(flags::Command::Doctor) => Doctor::new(&tags_reader).render(),
         Some(flags::Command::DefaultYaml) => println!("{}", ProjectConfigurations::default_yaml()),
         None => match Token::all(&tags_reader) {
-            Ok((_, results)) => {
-                match CliConfiguration::new(&flags, results) {
-                    Ok(configuration) => {
-                        configuration.render();
-                        if flags.harsh && !configuration.analyses().is_empty() {
-                            process::exit(1);
-                        }
-                    }
-                    Err(error) => {
-                        error_message::failed_project_config_parse(&error);
+            Ok((_, results)) => match CliConfiguration::new(&flags, results) {
+                Ok(configuration) => {
+                    configuration.render();
+                    if flags.harsh && !configuration.analyses().is_empty() {
                         process::exit(1);
                     }
                 }
-            }
+                Err(error) => {
+                    error_message::failed_project_config_parse(&error);
+                    process::exit(1);
+                }
+            },
             Err(e) => {
                 error_message::failed_token_parse(&e);
                 process::exit(1)

@@ -17,15 +17,11 @@ fn load_from_user_config_path(path: &str) -> Result<ProjectConfigurations, Strin
             .map_err(|error| format!("Failed to parse bundled default config: {error}"));
     }
 
-    let contents = read_file(path).map_err(|error| {
-        format!("Failed to read project configuration from `{path}`: {error}")
-    })?;
+    let contents = read_file(path)
+        .map_err(|error| format!("Failed to read project configuration from `{path}`: {error}"))?;
 
-    ProjectConfigurations::parse(&contents).map_err(|error| {
-        format!(
-            "Failed to parse project configuration from `{path}`: {error}"
-        )
-    })
+    ProjectConfigurations::parse(&contents)
+        .map_err(|error| format!("Failed to parse project configuration from `{path}`: {error}"))
 }
 
 fn file_path_in_home_dir(file_name: &str) -> Option<String> {

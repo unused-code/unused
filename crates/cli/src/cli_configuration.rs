@@ -2,7 +2,7 @@ use super::analyzed_token::AnalyzedToken;
 use super::formatters;
 use super::project_configurations_loader::load_and_parse_config;
 use super::{Flags, Format};
-use project_configuration::{AssertionConflict, ProjectConfiguration};
+use project_configuration::{AliasRule, AliasTemplatePart, AssertionConflict, ProjectConfiguration};
 use std::collections::{HashMap, HashSet};
 use token_analysis::{
     AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults, UsageLikelihoodStatus,
@@ -19,12 +19,15 @@ pub struct CliConfiguration<'a> {
 
 impl<'a> CliConfiguration<'a> {
     pub fn new(flags: &'a Flags, tokens: Vec<Token>) -> Result<Self, String> {
-        let token_search_config = build_token_search_config(flags, tokens);
+        let mut token_search_config = build_token_search_config(flags, tokens);
         let analysis_filter = build_analysis_filter(flags);
-        let results = TokenSearchResults::generate_with_config(&token_search_config);
+        let initial_results = TokenSearchResults::generate_with_config(&token_search_config);
         let project_configuration = load_and_parse_config()?
-            .best_match(&results)
+            .best_match(&initial_results)
             .unwrap_or_default();
+        token_search_config.token_aliases =
+            build_alias_search_terms(&token_search_config.tokens, &project_configuration);
+        let results = TokenSearchResults::generate_with_config(&token_search_config);
         let outcome =
             TokenUsageResults::calculate(&token_search_config, &results, &project_configuration);
 
@@ -178,4 +181,82 @@ where
     T: std::hash::Hash + Eq + std::clone::Clone,
 {
     input.iter().cloned().collect::<HashSet<_>>()
+}
+
+fn build_alias_search_terms(
+    tokens: &[Token],
+    project_configuration: &ProjectConfiguration,
+) -> HashMap<String, HashSet<String>> {
+    if project_configuration.method_aliases.is_empty() {
+        return HashMap::new();
+    }
+
+    tokens
+        .iter()
+        .filter_map(|token| {
+            let generated_terms =
+                expand_alias_candidates(&token.token, &project_configuration.method_aliases);
+            let alias_terms = generated_terms
+                .into_iter()
+                .filter(|candidate| candidate != &token.token)
+                .collect::<HashSet<_>>();
+
+            if alias_terms.is_empty() {
+                None
+            } else {
+                Some((token.token.clone(), alias_terms))
+            }
+        })
+        .collect()
+}
+
+fn expand_alias_candidates(input: &str, alias_rules: &[AliasRule]) -> HashSet<String> {
+    let mut candidates = HashSet::from([input.to_string()]);
+
+    for alias_rule in alias_rules {
+        let Some(capture) = input
+            .strip_prefix(&alias_rule.from.prefix)
+            .and_then(|rest| rest.strip_suffix(&alias_rule.from.suffix))
+        else {
+            continue;
+        };
+
+        let generated = render_alias_template(capture, &alias_rule.to.parts);
+        if generated != input {
+            candidates.insert(generated);
+        }
+    }
+
+    candidates
+}
+
+fn render_alias_template(capture: &str, parts: &[AliasTemplatePart]) -> String {
+    parts
+        .iter()
+        .map(|part| match part {
+            AliasTemplatePart::Literal(value) => value.to_string(),
+            AliasTemplatePart::Capture => capture.to_string(),
+            AliasTemplatePart::SnakecaseCapture => snakecase(capture),
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+fn snakecase(value: &str) -> String {
+    let mut out = String::new();
+    let chars: Vec<char> = value.chars().collect();
+
+    for (i, ch) in chars.iter().enumerate() {
+        if i > 0 && ch.is_uppercase() {
+            let prev = chars[i - 1];
+            let next_is_lowercase = chars.get(i + 1).is_some_and(|next| next.is_lowercase());
+            if prev.is_lowercase() || (prev.is_uppercase() && next_is_lowercase) {
+                out.push('_');
+            }
+        }
+
+        out.extend(ch.to_lowercase());
+    }
+
+    out
 }
