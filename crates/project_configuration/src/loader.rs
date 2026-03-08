@@ -385,6 +385,24 @@ mod tests {
         .to_string()
     }
 
+    fn assert_alias_issue(
+        errors: &[AliasValidationIssue],
+        config_name: &str,
+        rule_index: usize,
+        field: AliasRuleField,
+        message_fragment: &str,
+    ) {
+        assert!(
+            errors.iter().any(|error| {
+                error.config_name == config_name
+                    && error.rule_index == rule_index
+                    && error.field == field
+                    && error.message.contains(message_fragment)
+            }),
+            "missing alias validation issue for {config_name} rule {rule_index} {field:?} containing `{message_fragment}`; got: {errors:#?}",
+        );
+    }
+
     #[test]
     fn config_loads_from_yaml() {
         let configs = ProjectConfigurations::parse(&yaml_contents()).unwrap();
@@ -488,34 +506,43 @@ mod tests {
         let yaml = "
 - name: Rails
   method_aliases:
-    - from: admin?
+    - from: '*foo*'
       to: be_{}
     - from: has_*?
       to: have_{camelcase}
+- name: Phoenix
+  method_aliases:
+    - from: 'admin?'
+      to: be_{}
 ";
 
         match ProjectConfigurations::parse(yaml) {
             Ok(_) => panic!("expected alias validation error"),
-            Err(error) => {
-                assert_eq!(
-                    error,
-                    ConfigLoadError::AliasValidation(vec![
-                        AliasValidationIssue {
-                            config_name: "Rails".to_string(),
-                            rule_index: 0,
-                            field: AliasRuleField::From,
-                            message: "from pattern must contain exactly one `*` wildcard"
-                                .to_string(),
-                        },
-                        AliasValidationIssue {
-                            config_name: "Rails".to_string(),
-                            rule_index: 1,
-                            field: AliasRuleField::To,
-                            message: "unsupported to template token `{camelcase}`".to_string(),
-                        },
-                    ])
+            Err(ConfigLoadError::AliasValidation(errors)) => {
+                assert_eq!(errors.len(), 3);
+                assert_alias_issue(
+                    &errors,
+                    "Rails",
+                    0,
+                    AliasRuleField::From,
+                    "exactly one `*` wildcard",
+                );
+                assert_alias_issue(
+                    &errors,
+                    "Rails",
+                    1,
+                    AliasRuleField::To,
+                    "unsupported to template token",
+                );
+                assert_alias_issue(
+                    &errors,
+                    "Phoenix",
+                    0,
+                    AliasRuleField::From,
+                    "exactly one `*` wildcard",
                 );
             }
+            Err(error) => panic!("expected alias validation error, got {error:?}"),
         }
     }
 }
