@@ -12,49 +12,56 @@ use serde::Deserialize;
 use std::collections::HashSet;
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct RawAliasRule {
-    pub from: String,
-    pub to: String,
+pub(super) struct RawAliasRule {
+    from: String,
+    to: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct AliasRule {
-    pub from: AliasFromPattern,
-    pub to: AliasTemplate,
+    from: AliasFromPattern,
+    to: AliasTemplate,
+}
+
+impl AliasRule {
+    #[allow(dead_code)]
+    pub(crate) fn new(from: AliasFromPattern, to: AliasTemplate) -> Self {
+        Self { from, to }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AliasFromPattern {
+pub(crate) struct AliasFromPattern {
     pub raw: String,
     pub prefix: String,
     pub suffix: String,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct AliasTemplate {
+pub(crate) struct AliasTemplate {
     pub raw: String,
     pub parts: Vec<AliasTemplatePart>,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum AliasTransform {
+pub(crate) enum AliasTransform {
     Snakecase,
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum AliasTemplatePart {
+pub(crate) enum AliasTemplatePart {
     Literal(String),
     Capture(Vec<AliasTransform>),
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum AliasRuleField {
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub(crate) enum AliasRuleField {
     From,
     To,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct AliasRuleValidationError {
+pub(super) struct AliasRuleValidationError {
     pub rule_index: usize,
     pub field: AliasRuleField,
     pub message: String,
@@ -345,7 +352,7 @@ mod tests {
                 AliasRule {
                     from: AliasFromPattern {
                         raw: "*?".to_string(),
-                        prefix: "".to_string(),
+                        prefix: String::new(),
                         suffix: "?".to_string(),
                     },
                     to: AliasTemplate {
@@ -394,7 +401,7 @@ mod tests {
             Ok(vec![AliasRule {
                 from: AliasFromPattern {
                     raw: "*Validator".to_string(),
-                    prefix: "".to_string(),
+                    prefix: String::new(),
                     suffix: "Validator".to_string(),
                 },
                 to: AliasTemplate {

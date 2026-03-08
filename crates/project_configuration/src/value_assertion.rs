@@ -182,17 +182,17 @@ mod tests {
         from_suffix: &str,
         parts: Vec<AliasTemplatePart>,
     ) -> AliasRule {
-        AliasRule {
-            from: AliasFromPattern {
+        AliasRule::new(
+            AliasFromPattern {
                 raw: format!("{from_prefix}*{from_suffix}"),
                 prefix: from_prefix.to_string(),
                 suffix: from_suffix.to_string(),
             },
-            to: AliasTemplate {
+            AliasTemplate {
                 raw: "test".to_string(),
                 parts,
             },
-        }
+        )
     }
 
     #[test]

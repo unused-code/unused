@@ -1,5 +1,10 @@
 [group('dev')]
+local-dev: setup-watch
+  CARGO_TEST=1 cargo watch -x "nextest run --workspace"
+
+[group('dev')]
 setup:
+  just setup-watch
   just setup-nextest
   just setup-coverage
   just setup-audit
@@ -8,6 +13,10 @@ setup:
 [group('dev')]
 setup-nextest:
   cargo install cargo-nextest --locked
+
+[group('dev')]
+setup-watch:
+  cargo install cargo-watch --locked
 
 [group('dev')]
 setup-coverage:

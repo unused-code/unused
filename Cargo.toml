@@ -39,7 +39,6 @@ path = "src/bin/unused.rs"
 members = ["crates/*"]
 
 [workspace.dependencies]
-convert_case = "0.8"
 indicatif = { version = "0.18", features = ["rayon"] }
 itertools = "0.14"
 nom = "8"
@@ -47,7 +46,6 @@ proptest = "1.9"
 rayon = "1.11"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-tempfile = "3.23"
 totems = "0.2"
 
 [profile.release]

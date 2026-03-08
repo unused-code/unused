@@ -67,7 +67,7 @@ pub enum ConfigLoadError {
 pub struct AliasValidationIssue {
     pub config_name: String,
     pub rule_index: usize,
-    pub field: AliasRuleField,
+    field: AliasRuleField,
     pub message: String,
 }
 
@@ -119,13 +119,6 @@ impl ProjectConfigurations {
             .map_err(|error| ConfigLoadError::Yaml(error.to_string()))?;
         let configs = Self::parse_all_from_yaml(&raw_results)?;
         Ok(ProjectConfigurations { configs })
-    }
-
-    #[must_use]
-    pub fn parse_lossy(contents: &str) -> Self {
-        Self::parse(contents).unwrap_or_else(|_| Self {
-            configs: HashMap::new(),
-        })
     }
 
     #[must_use]

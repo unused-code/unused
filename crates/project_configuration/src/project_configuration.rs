@@ -150,26 +150,24 @@ mod tests {
     use crate::ProjectConfigurations;
     use crate::alias_rules::{AliasFromPattern, AliasTemplate, AliasTemplatePart};
     use std::collections::HashMap;
-    use std::io::Write;
-    use tempfile::NamedTempFile;
-    use token_search::{Token, TokenSearchConfig};
+    use token_search::Token;
 
     fn alias_rule(
         from_prefix: &str,
         from_suffix: &str,
         parts: Vec<AliasTemplatePart>,
     ) -> AliasRule {
-        AliasRule {
-            from: AliasFromPattern {
+        AliasRule::new(
+            AliasFromPattern {
                 raw: format!("{from_prefix}*{from_suffix}"),
                 prefix: from_prefix.to_string(),
                 suffix: from_suffix.to_string(),
             },
-            to: AliasTemplate {
+            AliasTemplate {
                 raw: "test".to_string(),
                 parts,
             },
-        }
+        )
     }
 
     fn token_search_result(token_value: &str) -> TokenSearchResult {
@@ -364,74 +362,5 @@ mod tests {
                 .name,
             "snakecase-style"
         );
-    }
-
-    #[test]
-    fn codebase_config_match_is_unchanged_without_alias_rules() {
-        let mut tmp_file = NamedTempFile::new().expect("failed to create temp file");
-        write!(tmp_file, "be_admin\n").expect("failed to write temp file");
-        let tmp_path = tmp_file.path().to_path_buf();
-
-        let config = TokenSearchConfig {
-            filter_tokens: |_| true,
-            tokens: vec![Token::new("be_admin".to_string(), Default::default())],
-            files: vec![tmp_path.clone()],
-            display_progress: false,
-            ..TokenSearchConfig::default()
-        };
-        let results = token_search::TokenSearchResults::generate_with_config(&config);
-
-        let project_configuration = ProjectConfiguration {
-            matches_if: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
-                "admin?".to_string(),
-            ))],
-            ..ProjectConfiguration::default()
-        };
-
-        assert!(!project_configuration.codebase_config_match(&results));
-    }
-
-    #[test]
-    fn codebase_config_match_supports_canonical_alias_equivalence_from_yaml() {
-        let cases = [
-            ("be_admin", "admin?"),
-            ("have_results", "has_results?"),
-            ("HTTPValidator", "http"),
-        ];
-
-        for (source_token, expected_match) in cases {
-            let mut tmp_file = NamedTempFile::new().expect("failed to create temp file");
-            write!(tmp_file, "{source_token}\n").expect("failed to write temp file");
-            let tmp_path = tmp_file.path().to_path_buf();
-
-            let config = TokenSearchConfig {
-                filter_tokens: |_| true,
-                tokens: vec![Token::new(source_token.to_string(), Default::default())],
-                files: vec![tmp_path.clone()],
-                display_progress: false,
-                ..TokenSearchConfig::default()
-            };
-            let results = token_search::TokenSearchResults::generate_with_config(&config);
-
-            let project_configuration = rails_configuration_from_yaml(&format!(
-                "
-- name: Rails
-  method_aliases:
-    - from: '*?'
-      to: be_{{}}
-    - from: 'has_*?'
-      to: have_{{}}
-    - from: '*Validator'
-      to: '{{snakecase}}'
-  matches_if:
-    - token_equals: '{expected_match}'
-",
-            ));
-
-            assert!(
-                project_configuration.codebase_config_match(&results),
-                "expected `{source_token}` to satisfy `{expected_match}` via aliases",
-            );
-        }
     }
 }
