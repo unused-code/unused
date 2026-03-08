@@ -301,9 +301,22 @@ mod tests {
 
         let expected = HashSet::from([
             input.to_string(),
+            "admin".to_string(),
             "be_admin".to_string(),
             "is_admin".to_string(),
         ]);
+        assert_eq!(candidates, expected);
+    }
+
+    #[test]
+    fn expands_alias_candidates_drops_no_op_generated_values() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[alias_rule("", "", vec![AliasTemplatePart::Capture])],
+        );
+
+        let expected = HashSet::from([input.to_string()]);
         assert_eq!(candidates, expected);
     }
 
@@ -342,6 +355,22 @@ mod tests {
 
         assert!(!matcher.check("admin?"));
         assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_keeps_direct_equals_match_when_aliases_exist() {
+        let matcher = ValueMatcher::Equals("be_admin".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        )];
+
+        assert!(matcher.check("be_admin"));
+        assert!(matcher.check_with_aliases("be_admin", &aliases));
     }
 
     #[test]
