@@ -358,6 +358,80 @@ mod tests {
     }
 
     #[test]
+    fn check_with_aliases_matches_wildcard_question_equivalence() {
+        let matcher = ValueMatcher::Equals("be_admin".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        )];
+
+        assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_has_prefix_equivalence() {
+        let matcher = ValueMatcher::Equals("have_feature".to_string());
+        let aliases = vec![alias_rule(
+            "has_",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("have_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        )];
+
+        assert!(!matcher.check("has_feature?"));
+        assert!(matcher.check_with_aliases("has_feature?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_snakecase_validator_equivalence() {
+        let matcher = ValueMatcher::Equals("email".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "Validator",
+            vec![AliasTemplatePart::SnakecaseCapture],
+        )];
+
+        assert!(!matcher.check("EmailValidator"));
+        assert!(matcher.check_with_aliases("EmailValidator", &aliases));
+    }
+
+    #[test]
+    fn expands_alias_candidates_applies_rules_in_one_pass_only() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture,
+                    ],
+                ),
+                alias_rule(
+                    "be_",
+                    "",
+                    vec![
+                        AliasTemplatePart::Literal("assert_".to_string()),
+                        AliasTemplatePart::Capture,
+                    ],
+                ),
+            ],
+        );
+
+        let expected = HashSet::from([input.to_string(), "be_admin".to_string()]);
+        assert_eq!(candidates, expected);
+        assert!(!candidates.contains("assert_admin"));
+    }
+
+    #[test]
     fn check_with_aliases_keeps_direct_equals_match_when_aliases_exist() {
         let matcher = ValueMatcher::Equals("be_admin".to_string());
         let aliases = vec![alias_rule(
