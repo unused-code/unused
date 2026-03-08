@@ -145,13 +145,13 @@ impl ProjectConfiguration {
 
 #[cfg(test)]
 mod tests {
-    use crate::alias_rules::{AliasFromPattern, AliasTemplate, AliasTemplatePart};
-    use crate::ProjectConfigurations;
     use super::super::value_assertion::*;
     use super::*;
+    use crate::ProjectConfigurations;
+    use crate::alias_rules::{AliasFromPattern, AliasTemplate, AliasTemplatePart};
     use std::collections::HashMap;
-    use std::fs;
-    use std::path::PathBuf;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
     use token_search::{Token, TokenSearchConfig};
 
     fn alias_rule(
@@ -307,7 +307,7 @@ mod tests {
                 "?",
                 vec![
                     AliasTemplatePart::Literal("be_".to_string()),
-                    AliasTemplatePart::Capture,
+                    AliasTemplatePart::Capture(vec![]),
                 ],
             )],
             ..ProjectConfiguration::default()
@@ -368,11 +368,9 @@ mod tests {
 
     #[test]
     fn codebase_config_match_is_unchanged_without_alias_rules() {
-        let tmp_path = std::env::temp_dir().join(format!(
-            "unused-phase2-no-alias-{}.rb",
-            std::process::id()
-        ));
-        fs::write(&tmp_path, "be_admin\n").expect("failed to write temp file");
+        let mut tmp_file = NamedTempFile::new().expect("failed to create temp file");
+        write!(tmp_file, "be_admin\n").expect("failed to write temp file");
+        let tmp_path = tmp_file.path().to_path_buf();
 
         let config = TokenSearchConfig {
             filter_tokens: |_| true,
@@ -391,8 +389,6 @@ mod tests {
         };
 
         assert!(!project_configuration.codebase_config_match(&results));
-
-        let _ = fs::remove_file(PathBuf::from(&tmp_path));
     }
 
     #[test]
@@ -404,13 +400,9 @@ mod tests {
         ];
 
         for (source_token, expected_match) in cases {
-            let tmp_path = std::env::temp_dir().join(format!(
-                "unused-phase3-alias-enabled-{}-{}-{}.rb",
-                std::process::id(),
-                source_token,
-                expected_match
-            ));
-            fs::write(&tmp_path, format!("{source_token}\n")).expect("failed to write temp file");
+            let mut tmp_file = NamedTempFile::new().expect("failed to create temp file");
+            write!(tmp_file, "{source_token}\n").expect("failed to write temp file");
+            let tmp_path = tmp_file.path().to_path_buf();
 
             let config = TokenSearchConfig {
                 filter_tokens: |_| true,
@@ -440,8 +432,6 @@ mod tests {
                 project_configuration.codebase_config_match(&results),
                 "expected `{source_token}` to satisfy `{expected_match}` via aliases",
             );
-
-            let _ = fs::remove_file(PathBuf::from(&tmp_path));
         }
     }
 }

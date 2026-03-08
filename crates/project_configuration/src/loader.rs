@@ -109,7 +109,11 @@ impl ProjectConfigurations {
         self.configs.get(name)
     }
 
-    #[must_use]
+    /// Parse project configurations from YAML content.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error when YAML is invalid or alias rules fail validation.
     pub fn parse(contents: &str) -> Result<Self, ConfigLoadError> {
         let raw_results = serde_yaml::from_str::<Vec<RawProjectConfiguration>>(contents)
             .map_err(|error| ConfigLoadError::Yaml(error.to_string()))?;
@@ -532,7 +536,7 @@ mod tests {
                     "Rails",
                     1,
                     AliasRuleField::To,
-                    "unsupported to template token",
+                    "unsupported to template transform",
                 );
                 assert_alias_issue(
                     &errors,

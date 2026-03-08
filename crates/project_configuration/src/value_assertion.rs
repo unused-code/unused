@@ -1,4 +1,4 @@
-use super::alias_rules::{AliasRule, AliasTemplatePart};
+use super::alias_rules::{AliasRule, expand_alias_candidates};
 use std::collections::HashSet;
 use token_search::TokenSearchResult;
 
@@ -117,61 +117,12 @@ fn candidate_sets_overlap(first: &HashSet<String>, second: &HashSet<String>) -> 
     first.iter().any(|candidate| second.contains(candidate))
 }
 
-fn expand_alias_candidates(input: &str, alias_rules: &[AliasRule]) -> HashSet<String> {
-    let mut candidates = HashSet::from([input.to_string()]);
-
-    for alias_rule in alias_rules {
-        let Some(capture) = input
-            .strip_prefix(&alias_rule.from.prefix)
-            .and_then(|rest| rest.strip_suffix(&alias_rule.from.suffix))
-        else {
-            continue;
-        };
-
-        let generated = render_alias_template(capture, &alias_rule.to.parts);
-        if generated != input {
-            candidates.insert(generated);
-        }
-    }
-
-    candidates
-}
-
-fn render_alias_template(capture: &str, parts: &[AliasTemplatePart]) -> String {
-    parts
-        .iter()
-        .map(|part| match part {
-            AliasTemplatePart::Literal(value) => value.to_string(),
-            AliasTemplatePart::Capture => capture.to_string(),
-            AliasTemplatePart::SnakecaseCapture => snakecase(capture),
-        })
-        .collect::<Vec<_>>()
-        .join("")
-}
-
-fn snakecase(value: &str) -> String {
-    let mut out = String::new();
-    let chars: Vec<char> = value.chars().collect();
-
-    for (i, ch) in chars.iter().enumerate() {
-        if i > 0 && ch.is_uppercase() {
-            let prev = chars[i - 1];
-            let next_is_lowercase = chars.get(i + 1).is_some_and(|next| next.is_lowercase());
-            if prev.is_lowercase() || (prev.is_uppercase() && next_is_lowercase) {
-                out.push('_');
-            }
-        }
-
-        out.extend(ch.to_lowercase());
-    }
-
-    out
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::alias_rules::{AliasFromPattern, AliasTemplate};
+    use crate::alias_rules::{
+        AliasFromPattern, AliasTemplate, AliasTemplatePart, AliasTransform, render_alias_template,
+    };
 
     fn foo() -> String {
         String::from("foo")
@@ -255,7 +206,7 @@ mod tests {
                     "?",
                     vec![
                         AliasTemplatePart::Literal("be_".to_string()),
-                        AliasTemplatePart::Capture,
+                        AliasTemplatePart::Capture(vec![]),
                     ],
                 ),
                 alias_rule(
@@ -263,7 +214,7 @@ mod tests {
                     "?",
                     vec![
                         AliasTemplatePart::Literal("be_".to_string()),
-                        AliasTemplatePart::Capture,
+                        AliasTemplatePart::Capture(vec![]),
                     ],
                 ),
             ],
@@ -279,13 +230,13 @@ mod tests {
         let candidates = expand_alias_candidates(
             input,
             &[
-                alias_rule("", "?", vec![AliasTemplatePart::Capture]),
+                alias_rule("", "?", vec![AliasTemplatePart::Capture(vec![])]),
                 alias_rule(
                     "",
                     "?",
                     vec![
                         AliasTemplatePart::Literal("be_".to_string()),
-                        AliasTemplatePart::Capture,
+                        AliasTemplatePart::Capture(vec![]),
                     ],
                 ),
                 alias_rule(
@@ -293,7 +244,7 @@ mod tests {
                     "?",
                     vec![
                         AliasTemplatePart::Literal("is_".to_string()),
-                        AliasTemplatePart::Capture,
+                        AliasTemplatePart::Capture(vec![]),
                     ],
                 ),
             ],
@@ -313,7 +264,7 @@ mod tests {
         let input = "admin?";
         let candidates = expand_alias_candidates(
             input,
-            &[alias_rule("", "", vec![AliasTemplatePart::Capture])],
+            &[alias_rule("", "", vec![AliasTemplatePart::Capture(vec![])])],
         );
 
         let expected = HashSet::from([input.to_string()]);
@@ -326,7 +277,7 @@ mod tests {
             "ready!",
             &[
                 AliasTemplatePart::Literal("be_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         );
 
@@ -335,8 +286,10 @@ mod tests {
 
     #[test]
     fn render_alias_template_supports_snakecase_capture() {
-        let rendered =
-            render_alias_template("HTTPValidator", &[AliasTemplatePart::SnakecaseCapture]);
+        let rendered = render_alias_template(
+            "HTTPValidator",
+            &[AliasTemplatePart::Capture(vec![AliasTransform::Snakecase])],
+        );
 
         assert_eq!(rendered, "http_validator");
     }
@@ -349,7 +302,7 @@ mod tests {
             "?",
             vec![
                 AliasTemplatePart::Literal("be_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         )];
 
@@ -365,7 +318,7 @@ mod tests {
             "?",
             vec![
                 AliasTemplatePart::Literal("be_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         )];
 
@@ -380,7 +333,7 @@ mod tests {
             "?",
             vec![
                 AliasTemplatePart::Literal("have_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         )];
 
@@ -394,7 +347,7 @@ mod tests {
         let aliases = vec![alias_rule(
             "",
             "Validator",
-            vec![AliasTemplatePart::SnakecaseCapture],
+            vec![AliasTemplatePart::Capture(vec![AliasTransform::Snakecase])],
         )];
 
         assert!(!matcher.check("EmailValidator"));
@@ -412,7 +365,7 @@ mod tests {
                     "?",
                     vec![
                         AliasTemplatePart::Literal("be_".to_string()),
-                        AliasTemplatePart::Capture,
+                        AliasTemplatePart::Capture(vec![]),
                     ],
                 ),
                 alias_rule(
@@ -420,7 +373,7 @@ mod tests {
                     "",
                     vec![
                         AliasTemplatePart::Literal("assert_".to_string()),
-                        AliasTemplatePart::Capture,
+                        AliasTemplatePart::Capture(vec![]),
                     ],
                 ),
             ],
@@ -439,7 +392,7 @@ mod tests {
             "?",
             vec![
                 AliasTemplatePart::Literal("be_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         )];
 
@@ -459,7 +412,7 @@ mod tests {
             "?",
             vec![
                 AliasTemplatePart::Literal("be_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         )];
 
@@ -475,7 +428,7 @@ mod tests {
             "?",
             vec![
                 AliasTemplatePart::Literal("be_".to_string()),
-                AliasTemplatePart::Capture,
+                AliasTemplatePart::Capture(vec![]),
             ],
         )];
 

@@ -2,7 +2,7 @@ use super::analyzed_token::AnalyzedToken;
 use super::formatters;
 use super::project_configurations_loader::load_and_parse_config;
 use super::{Flags, Format};
-use project_configuration::{AliasRule, AliasTemplatePart, AssertionConflict, ProjectConfiguration};
+use project_configuration::{AssertionConflict, ProjectConfiguration, expand_alias_candidates};
 use std::collections::{HashMap, HashSet};
 use token_analysis::{
     AnalysisFilter, SortOrder, TokenUsage, TokenUsageResults, UsageLikelihoodStatus,
@@ -210,53 +210,37 @@ fn build_alias_search_terms(
         .collect()
 }
 
-fn expand_alias_candidates(input: &str, alias_rules: &[AliasRule]) -> HashSet<String> {
-    let mut candidates = HashSet::from([input.to_string()]);
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use project_configuration::ProjectConfigurations;
 
-    for alias_rule in alias_rules {
-        let Some(capture) = input
-            .strip_prefix(&alias_rule.from.prefix)
-            .and_then(|rest| rest.strip_suffix(&alias_rule.from.suffix))
-        else {
-            continue;
-        };
+    #[test]
+    fn build_alias_search_terms_includes_have_alias_for_has_predicate() {
+        let configuration = ProjectConfigurations::parse(
+            "
+- name: Rails
+  method_aliases:
+    - from: '*?'
+      to: be_{}
+    - from: 'has_*?'
+      to: have_{}
+",
+        )
+        .expect("valid project configuration")
+        .get("Rails")
+        .cloned()
+        .expect("rails config");
 
-        let generated = render_alias_template(capture, &alias_rule.to.parts);
-        if generated != input {
-            candidates.insert(generated);
-        }
+        let aliases = build_alias_search_terms(
+            &[Token::new("has_attribute?".to_string(), Default::default())],
+            &configuration,
+        );
+        let terms = aliases
+            .get("has_attribute?")
+            .expect("alias terms for has_attribute?");
+
+        assert!(terms.contains("have_attribute"));
+        assert!(terms.contains("be_has_attribute"));
     }
-
-    candidates
-}
-
-fn render_alias_template(capture: &str, parts: &[AliasTemplatePart]) -> String {
-    parts
-        .iter()
-        .map(|part| match part {
-            AliasTemplatePart::Literal(value) => value.to_string(),
-            AliasTemplatePart::Capture => capture.to_string(),
-            AliasTemplatePart::SnakecaseCapture => snakecase(capture),
-        })
-        .collect::<Vec<_>>()
-        .join("")
-}
-
-fn snakecase(value: &str) -> String {
-    let mut out = String::new();
-    let chars: Vec<char> = value.chars().collect();
-
-    for (i, ch) in chars.iter().enumerate() {
-        if i > 0 && ch.is_uppercase() {
-            let prev = chars[i - 1];
-            let next_is_lowercase = chars.get(i + 1).is_some_and(|next| next.is_lowercase());
-            if prev.is_lowercase() || (prev.is_uppercase() && next_is_lowercase) {
-                out.push('_');
-            }
-        }
-
-        out.extend(ch.to_lowercase());
-    }
-
-    out
 }

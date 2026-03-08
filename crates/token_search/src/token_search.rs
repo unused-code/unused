@@ -224,8 +224,8 @@ impl TokenSearchResults {
     }
 }
 
-fn build_search_patterns<'a>(
-    filtered_results: &[&'a Token],
+fn build_search_patterns(
+    filtered_results: &[&Token],
     token_aliases: &HashMap<String, HashSet<String>>,
 ) -> (Vec<String>, Vec<Vec<usize>>) {
     let mut patterns: Vec<String> = Vec::new();
@@ -306,7 +306,8 @@ impl TokenSearchResult {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::fs;
+    use std::io::Write;
+    use tempfile::NamedTempFile;
 
     fn config_for_file(path: &PathBuf, tokens: Vec<Token>) -> TokenSearchConfig {
         TokenSearchConfig {
@@ -321,11 +322,9 @@ mod tests {
 
     #[test]
     fn search_counts_alias_occurrences_against_canonical_token() {
-        let path = std::env::temp_dir().join(format!(
-            "unused-token-search-alias-{}-1.rb",
-            std::process::id()
-        ));
-        fs::write(&path, "expect(span_stub).to have_attribute(\"x\")\n").expect("write");
+        let mut tmp_file = NamedTempFile::new().expect("create temp file");
+        write!(tmp_file, "expect(span_stub).to have_attribute(\"x\")\n").expect("write");
+        let path = tmp_file.path().to_path_buf();
 
         let token = Token::new("has_attribute?".to_string(), Default::default());
         let mut config = config_for_file(&path, vec![token]);
@@ -342,16 +341,13 @@ mod tests {
             .expect("canonical token result");
 
         assert_eq!(has_attribute.occurrences.get(&path), Some(&1));
-        let _ = fs::remove_file(&path);
     }
 
     #[test]
     fn search_without_alias_term_does_not_report_alias_only_usage() {
-        let path = std::env::temp_dir().join(format!(
-            "unused-token-search-alias-{}-2.rb",
-            std::process::id()
-        ));
-        fs::write(&path, "expect(span_stub).to have_attribute(\"x\")\n").expect("write");
+        let mut tmp_file = NamedTempFile::new().expect("create temp file");
+        write!(tmp_file, "expect(span_stub).to have_attribute(\"x\")\n").expect("write");
+        let path = tmp_file.path().to_path_buf();
 
         let token = Token::new("has_attribute?".to_string(), Default::default());
         let config = config_for_file(&path, vec![token]);
@@ -364,6 +360,5 @@ mod tests {
                 .all(|result| result.token.token != "has_attribute?"),
             "alias-only usage should not appear without alias search terms"
         );
-        let _ = fs::remove_file(&path);
     }
 }

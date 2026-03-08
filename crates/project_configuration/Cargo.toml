@@ -8,9 +8,13 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+convert_case = { workspace = true }
+nom = { workspace = true }
 serde = { workspace = true }
 serde_yaml = "0.9"
 token_search = { path = "../../crates/token_search" }
 
 [dev-dependencies]
+proptest = { workspace = true }
+tempfile = { workspace = true }
 totems = { workspace = true }
