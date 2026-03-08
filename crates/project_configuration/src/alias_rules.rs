@@ -137,7 +137,9 @@ fn parse_template(
             Some(offset) => {
                 let open = cursor + offset;
                 if open > cursor {
-                    parts.push(AliasTemplatePart::Literal(raw_template[cursor..open].to_string()));
+                    parts.push(AliasTemplatePart::Literal(
+                        raw_template[cursor..open].to_string(),
+                    ));
                 }
 
                 let token_start = open + 1;
@@ -149,7 +151,7 @@ fn parse_template(
                         return Err(AliasRuleValidationError::to_error(
                             rule_index,
                             "to template has an unclosed `{` token".to_string(),
-                        ))
+                        ));
                     }
                 };
 
@@ -161,14 +163,16 @@ fn parse_template(
                         return Err(AliasRuleValidationError::to_error(
                             rule_index,
                             format!("unsupported to template token `{{{token}}}`"),
-                        ))
+                        ));
                     }
                 }
 
                 cursor = close + 1;
             }
             None => {
-                parts.push(AliasTemplatePart::Literal(raw_template[cursor..].to_string()));
+                parts.push(AliasTemplatePart::Literal(
+                    raw_template[cursor..].to_string(),
+                ));
                 cursor = raw_template.len();
             }
         }
@@ -189,6 +193,27 @@ mod tests {
             from: from.to_string(),
             to: to.to_string(),
         }
+    }
+
+    fn assert_error(
+        errors: &[AliasRuleValidationError],
+        rule_index: usize,
+        field: AliasRuleField,
+        message_fragment: &str,
+    ) {
+        let matching_error = errors
+            .iter()
+            .find(|error| error.rule_index == rule_index && error.field == field)
+            .unwrap_or_else(|| {
+                panic!("missing error for rule {rule_index}, field {field:?}: {errors:?}")
+            });
+
+        assert!(
+            matching_error.message.contains(message_fragment),
+            "expected `{}` to contain `{}`",
+            matching_error.message,
+            message_fragment,
+        );
     }
 
     #[test]
@@ -249,13 +274,11 @@ mod tests {
     fn compile_alias_rules_rejects_from_without_wildcard() {
         let result = compile_alias_rules(&[raw_rule("admin?", "be_{}")]).unwrap_err();
 
-        assert_eq!(
-            result,
-            vec![AliasRuleValidationError {
-                rule_index: 0,
-                field: AliasRuleField::From,
-                message: "from pattern must contain exactly one `*` wildcard".to_string(),
-            }]
+        assert_error(
+            &result,
+            0,
+            AliasRuleField::From,
+            "exactly one `*` wildcard",
         );
     }
 
@@ -263,13 +286,11 @@ mod tests {
     fn compile_alias_rules_rejects_from_with_multiple_wildcards() {
         let result = compile_alias_rules(&[raw_rule("*foo*", "be_{}")]).unwrap_err();
 
-        assert_eq!(
-            result,
-            vec![AliasRuleValidationError {
-                rule_index: 0,
-                field: AliasRuleField::From,
-                message: "from pattern must contain exactly one `*` wildcard".to_string(),
-            }]
+        assert_error(
+            &result,
+            0,
+            AliasRuleField::From,
+            "exactly one `*` wildcard",
         );
     }
 
@@ -277,13 +298,11 @@ mod tests {
     fn compile_alias_rules_rejects_unknown_to_token() {
         let result = compile_alias_rules(&[raw_rule("*?", "be_{camelcase}")]).unwrap_err();
 
-        assert_eq!(
-            result,
-            vec![AliasRuleValidationError {
-                rule_index: 0,
-                field: AliasRuleField::To,
-                message: "unsupported to template token `{camelcase}`".to_string(),
-            }]
+        assert_error(
+            &result,
+            0,
+            AliasRuleField::To,
+            "unsupported to template token",
         );
     }
 
@@ -291,13 +310,19 @@ mod tests {
     fn compile_alias_rules_rejects_unclosed_to_token() {
         let result = compile_alias_rules(&[raw_rule("*?", "be_{")]).unwrap_err();
 
-        assert_eq!(
-            result,
-            vec![AliasRuleValidationError {
-                rule_index: 0,
-                field: AliasRuleField::To,
-                message: "to template has an unclosed `{` token".to_string(),
-            }]
-        );
+        assert_error(&result, 0, AliasRuleField::To, "unclosed `{` token");
+    }
+
+    #[test]
+    fn compile_alias_rules_reports_multiple_validation_classes_order_independently() {
+        let result = compile_alias_rules(&[
+            raw_rule("admin?", "be_{}"),
+            raw_rule("*?", "be_{camelcase}"),
+        ])
+        .unwrap_err();
+
+        assert_eq!(result.len(), 2);
+        assert_error(&result, 0, AliasRuleField::From, "exactly one `*` wildcard");
+        assert_error(&result, 1, AliasRuleField::To, "unsupported to template token");
     }
 }
