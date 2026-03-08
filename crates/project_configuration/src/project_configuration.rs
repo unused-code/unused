@@ -146,6 +146,7 @@ impl ProjectConfiguration {
 #[cfg(test)]
 mod tests {
     use crate::alias_rules::{AliasFromPattern, AliasTemplate, AliasTemplatePart};
+    use crate::ProjectConfigurations;
     use super::super::value_assertion::*;
     use super::*;
     use std::collections::HashMap;
@@ -176,6 +177,14 @@ mod tests {
             token: Token::new(token_value.to_string(), Default::default()),
             occurrences: HashMap::new(),
         }
+    }
+
+    fn rails_configuration_from_yaml(yaml: &str) -> ProjectConfiguration {
+        ProjectConfigurations::parse(yaml)
+            .expect("expected valid project configuration yaml")
+            .get("Rails")
+            .cloned()
+            .expect("expected Rails configuration")
     }
 
     #[test]
@@ -313,15 +322,61 @@ mod tests {
     }
 
     #[test]
+    fn low_likelihood_match_supports_canonical_alias_equivalence_from_yaml() {
+        let configuration = rails_configuration_from_yaml(
+            "
+- name: Rails
+  method_aliases:
+    - from: '*?'
+      to: be_{}
+    - from: 'has_*?'
+      to: have_{}
+    - from: '*Validator'
+      to: '{snakecase}'
+  auto_low_likelihood:
+    - name: be-style
+      token_equals: be_admin
+    - name: have-style
+      token_equals: have_results
+    - name: snakecase-style
+      token_equals: http
+",
+        );
+
+        assert_eq!(
+            configuration
+                .low_likelihood_match(&token_search_result("admin?"))
+                .expect("expected be-style alias match")
+                .name,
+            "be-style"
+        );
+        assert_eq!(
+            configuration
+                .low_likelihood_match(&token_search_result("has_results?"))
+                .expect("expected have-style alias match")
+                .name,
+            "have-style"
+        );
+        assert_eq!(
+            configuration
+                .low_likelihood_match(&token_search_result("HTTPValidator"))
+                .expect("expected snakecase-style alias match")
+                .name,
+            "snakecase-style"
+        );
+    }
+
+    #[test]
     fn codebase_config_match_is_unchanged_without_alias_rules() {
         let tmp_path = std::env::temp_dir().join(format!(
             "unused-phase2-no-alias-{}.rb",
             std::process::id()
         ));
-        fs::write(&tmp_path, "admin?\n").expect("failed to write temp file");
+        fs::write(&tmp_path, "be_admin\n").expect("failed to write temp file");
 
         let config = TokenSearchConfig {
-            tokens: vec![Token::new("admin?".to_string(), Default::default())],
+            filter_tokens: |_| true,
+            tokens: vec![Token::new("be_admin".to_string(), Default::default())],
             files: vec![tmp_path.clone()],
             display_progress: false,
             ..TokenSearchConfig::default()
@@ -330,7 +385,7 @@ mod tests {
 
         let project_configuration = ProjectConfiguration {
             matches_if: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
-                "be_admin".to_string(),
+                "admin?".to_string(),
             ))],
             ..ProjectConfiguration::default()
         };
@@ -338,5 +393,55 @@ mod tests {
         assert!(!project_configuration.codebase_config_match(&results));
 
         let _ = fs::remove_file(PathBuf::from(&tmp_path));
+    }
+
+    #[test]
+    fn codebase_config_match_supports_canonical_alias_equivalence_from_yaml() {
+        let cases = [
+            ("be_admin", "admin?"),
+            ("have_results", "has_results?"),
+            ("HTTPValidator", "http"),
+        ];
+
+        for (source_token, expected_match) in cases {
+            let tmp_path = std::env::temp_dir().join(format!(
+                "unused-phase3-alias-enabled-{}-{}-{}.rb",
+                std::process::id(),
+                source_token,
+                expected_match
+            ));
+            fs::write(&tmp_path, format!("{source_token}\n")).expect("failed to write temp file");
+
+            let config = TokenSearchConfig {
+                filter_tokens: |_| true,
+                tokens: vec![Token::new(source_token.to_string(), Default::default())],
+                files: vec![tmp_path.clone()],
+                display_progress: false,
+                ..TokenSearchConfig::default()
+            };
+            let results = token_search::TokenSearchResults::generate_with_config(&config);
+
+            let project_configuration = rails_configuration_from_yaml(&format!(
+                "
+- name: Rails
+  method_aliases:
+    - from: '*?'
+      to: be_{{}}
+    - from: 'has_*?'
+      to: have_{{}}
+    - from: '*Validator'
+      to: '{{snakecase}}'
+  matches_if:
+    - token_equals: '{expected_match}'
+",
+            ));
+
+            assert!(
+                project_configuration.codebase_config_match(&results),
+                "expected `{source_token}` to satisfy `{expected_match}` via aliases",
+            );
+
+            let _ = fs::remove_file(PathBuf::from(&tmp_path));
+        }
     }
 }
