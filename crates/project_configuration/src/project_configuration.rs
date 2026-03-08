@@ -38,7 +38,17 @@ pub struct LowLikelihoodConfig {
 
 impl LowLikelihoodConfig {
     pub fn matches(&self, token_search_result: &TokenSearchResult) -> bool {
-        self.matchers.iter().all(|a| a.matches(token_search_result))
+        self.matches_with_aliases(token_search_result, &[])
+    }
+
+    pub fn matches_with_aliases(
+        &self,
+        token_search_result: &TokenSearchResult,
+        alias_rules: &[AliasRule],
+    ) -> bool {
+        self.matchers
+            .iter()
+            .all(|a| a.matches_with_aliases(token_search_result, alias_rules))
     }
 
     pub fn conflicts(&self) -> Vec<AssertionConflict> {
@@ -119,7 +129,7 @@ impl ProjectConfiguration {
     ) -> Option<&LowLikelihoodConfig> {
         self.low_likelihood
             .iter()
-            .find(|ll| ll.matches(token_search_result))
+            .find(|ll| ll.matches_with_aliases(token_search_result, &self.method_aliases))
     }
 
     #[must_use]
@@ -128,7 +138,7 @@ impl ProjectConfiguration {
             results
                 .value()
                 .iter()
-                .any(|result| assertion.matches(result))
+                .any(|result| assertion.matches_with_aliases(result, &self.method_aliases))
         })
     }
 }

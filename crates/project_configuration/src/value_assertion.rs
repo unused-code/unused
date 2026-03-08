@@ -11,6 +11,15 @@ pub enum Assertion {
 impl Assertion {
     #[must_use]
     pub fn matches(&self, token_search_result: &TokenSearchResult) -> bool {
+        self.matches_with_aliases(token_search_result, &[])
+    }
+
+    #[must_use]
+    pub fn matches_with_aliases(
+        &self,
+        token_search_result: &TokenSearchResult,
+        alias_rules: &[AliasRule],
+    ) -> bool {
         match self {
             Assertion::PathAssertion(matcher) => token_search_result
                 .token
@@ -18,7 +27,9 @@ impl Assertion {
                 .iter()
                 .filter_map(|path| path.to_str())
                 .any(|path| matcher.check(path)),
-            Assertion::TokenAssertion(matcher) => matcher.check(&token_search_result.token.token),
+            Assertion::TokenAssertion(matcher) => {
+                matcher.check_with_aliases(&token_search_result.token.token, alias_rules)
+            }
         }
     }
 
@@ -76,6 +87,34 @@ impl ValueMatcher {
             ValueMatcher::Equals(_) | ValueMatcher::ExactMatchOnAnyOf(_)
         )
     }
+
+    #[must_use]
+    pub fn check_with_aliases(&self, haystack: &str, alias_rules: &[AliasRule]) -> bool {
+        if alias_rules.is_empty() {
+            return self.check(haystack);
+        }
+
+        match self {
+            ValueMatcher::Equals(needle) => candidate_sets_overlap(
+                &expand_alias_candidates(haystack, alias_rules),
+                &expand_alias_candidates(needle, alias_rules),
+            ),
+            ValueMatcher::ExactMatchOnAnyOf(values) => {
+                let haystack_candidates = expand_alias_candidates(haystack, alias_rules);
+                values.iter().any(|value| {
+                    candidate_sets_overlap(
+                        &haystack_candidates,
+                        &expand_alias_candidates(value, alias_rules),
+                    )
+                })
+            }
+            _ => self.check(haystack),
+        }
+    }
+}
+
+fn candidate_sets_overlap(first: &HashSet<String>, second: &HashSet<String>) -> bool {
+    first.iter().any(|candidate| second.contains(candidate))
 }
 
 fn expand_alias_candidates(input: &str, alias_rules: &[AliasRule]) -> HashSet<String> {
@@ -287,5 +326,56 @@ mod tests {
             render_alias_template("HTTPValidator", &[AliasTemplatePart::SnakecaseCapture]);
 
         assert_eq!(rendered, "http_validator");
+    }
+
+    #[test]
+    fn check_with_aliases_matches_equals_when_aliases_overlap() {
+        let matcher = ValueMatcher::Equals("be_admin".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        )];
+
+        assert!(!matcher.check("admin?"));
+        assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_matches_exact_match_on_any_of_when_aliases_overlap() {
+        let matcher = ValueMatcher::ExactMatchOnAnyOf(
+            ["be_admin".to_string(), "be_staff".to_string()]
+                .into_iter()
+                .collect(),
+        );
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        )];
+
+        assert!(!matcher.check("admin?"));
+        assert!(matcher.check_with_aliases("admin?", &aliases));
+    }
+
+    #[test]
+    fn check_with_aliases_keeps_partial_matchers_unchanged() {
+        let matcher = ValueMatcher::StartsWith("be_".to_string());
+        let aliases = vec![alias_rule(
+            "",
+            "?",
+            vec![
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        )];
+
+        assert!(!matcher.check_with_aliases("admin?", &aliases));
     }
 }
