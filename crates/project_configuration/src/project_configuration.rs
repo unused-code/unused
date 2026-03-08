@@ -145,8 +145,38 @@ impl ProjectConfiguration {
 
 #[cfg(test)]
 mod tests {
+    use crate::alias_rules::{AliasFromPattern, AliasTemplate, AliasTemplatePart};
     use super::super::value_assertion::*;
     use super::*;
+    use std::collections::HashMap;
+    use std::fs;
+    use std::path::PathBuf;
+    use token_search::{Token, TokenSearchConfig};
+
+    fn alias_rule(
+        from_prefix: &str,
+        from_suffix: &str,
+        parts: Vec<AliasTemplatePart>,
+    ) -> AliasRule {
+        AliasRule {
+            from: AliasFromPattern {
+                raw: format!("{from_prefix}*{from_suffix}"),
+                prefix: from_prefix.to_string(),
+                suffix: from_suffix.to_string(),
+            },
+            to: AliasTemplate {
+                raw: "test".to_string(),
+                parts,
+            },
+        }
+    }
+
+    fn token_search_result(token_value: &str) -> TokenSearchResult {
+        TokenSearchResult {
+            token: Token::new(token_value.to_string(), Default::default()),
+            occurrences: HashMap::new(),
+        }
+    }
 
     #[test]
     fn low_likelihood_highlights_logical_issues_with_assertions() {
@@ -224,5 +254,89 @@ mod tests {
         };
 
         assert_eq!(no_conflict.conflicts(), vec![]);
+    }
+
+    #[test]
+    fn low_likelihood_match_is_unchanged_without_alias_rules() {
+        let configuration = ProjectConfiguration {
+            low_likelihood: vec![
+                LowLikelihoodConfig {
+                    name: String::from("alias-style"),
+                    matchers: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                        "be_admin".to_string(),
+                    ))],
+                },
+                LowLikelihoodConfig {
+                    name: String::from("direct"),
+                    matchers: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                        "admin?".to_string(),
+                    ))],
+                },
+            ],
+            ..ProjectConfiguration::default()
+        };
+
+        let result = token_search_result("admin?");
+        let matched = configuration
+            .low_likelihood_match(&result)
+            .expect("expected direct matcher to match");
+
+        assert_eq!(matched.name, "direct");
+    }
+
+    #[test]
+    fn low_likelihood_match_can_diverge_when_alias_rules_exist() {
+        let configuration = ProjectConfiguration {
+            low_likelihood: vec![LowLikelihoodConfig {
+                name: String::from("alias-style"),
+                matchers: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                    "be_admin".to_string(),
+                ))],
+            }],
+            method_aliases: vec![alias_rule(
+                "",
+                "?",
+                vec![
+                    AliasTemplatePart::Literal("be_".to_string()),
+                    AliasTemplatePart::Capture,
+                ],
+            )],
+            ..ProjectConfiguration::default()
+        };
+
+        let result = token_search_result("admin?");
+        let matched = configuration
+            .low_likelihood_match(&result)
+            .expect("expected alias-enabled matcher to match");
+
+        assert_eq!(matched.name, "alias-style");
+    }
+
+    #[test]
+    fn codebase_config_match_is_unchanged_without_alias_rules() {
+        let tmp_path = std::env::temp_dir().join(format!(
+            "unused-phase2-no-alias-{}.rb",
+            std::process::id()
+        ));
+        fs::write(&tmp_path, "admin?\n").expect("failed to write temp file");
+
+        let config = TokenSearchConfig {
+            tokens: vec![Token::new("admin?".to_string(), Default::default())],
+            files: vec![tmp_path.clone()],
+            display_progress: false,
+            ..TokenSearchConfig::default()
+        };
+        let results = token_search::TokenSearchResults::generate_with_config(&config);
+
+        let project_configuration = ProjectConfiguration {
+            matches_if: vec![Assertion::TokenAssertion(ValueMatcher::Equals(
+                "be_admin".to_string(),
+            ))],
+            ..ProjectConfiguration::default()
+        };
+
+        assert!(!project_configuration.codebase_config_match(&results));
+
+        let _ = fs::remove_file(PathBuf::from(&tmp_path));
     }
 }
