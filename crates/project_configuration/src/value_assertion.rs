@@ -1,3 +1,4 @@
+use super::alias_rules::{AliasRule, AliasTemplatePart};
 use std::collections::HashSet;
 use token_search::TokenSearchResult;
 
@@ -77,9 +78,61 @@ impl ValueMatcher {
     }
 }
 
+fn expand_alias_candidates(input: &str, alias_rules: &[AliasRule]) -> HashSet<String> {
+    let mut candidates = HashSet::from([input.to_string()]);
+
+    for alias_rule in alias_rules {
+        let Some(capture) = input
+            .strip_prefix(&alias_rule.from.prefix)
+            .and_then(|rest| rest.strip_suffix(&alias_rule.from.suffix))
+        else {
+            continue;
+        };
+
+        let generated = render_alias_template(capture, &alias_rule.to.parts);
+        if generated != input {
+            candidates.insert(generated);
+        }
+    }
+
+    candidates
+}
+
+fn render_alias_template(capture: &str, parts: &[AliasTemplatePart]) -> String {
+    parts
+        .iter()
+        .map(|part| match part {
+            AliasTemplatePart::Literal(value) => value.to_string(),
+            AliasTemplatePart::Capture => capture.to_string(),
+            AliasTemplatePart::SnakecaseCapture => snakecase(capture),
+        })
+        .collect::<Vec<_>>()
+        .join("")
+}
+
+fn snakecase(value: &str) -> String {
+    let mut out = String::new();
+    let chars: Vec<char> = value.chars().collect();
+
+    for (i, ch) in chars.iter().enumerate() {
+        if i > 0 && ch.is_uppercase() {
+            let prev = chars[i - 1];
+            let next_is_lowercase = chars.get(i + 1).is_some_and(|next| next.is_lowercase());
+            if prev.is_lowercase() || (prev.is_uppercase() && next_is_lowercase) {
+                out.push('_');
+            }
+        }
+
+        out.extend(ch.to_lowercase());
+    }
+
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::alias_rules::{AliasFromPattern, AliasTemplate};
 
     fn foo() -> String {
         String::from("foo")
@@ -132,5 +185,107 @@ mod tests {
         assert!(!ValueMatcher::Equals(foo()).check("Foo"));
         assert!(!ValueMatcher::Equals(foo()).check(" foo"));
         assert!(!ValueMatcher::Equals(foo()).check("foo "));
+    }
+
+    fn alias_rule(
+        from_prefix: &str,
+        from_suffix: &str,
+        parts: Vec<AliasTemplatePart>,
+    ) -> AliasRule {
+        AliasRule {
+            from: AliasFromPattern {
+                raw: format!("{from_prefix}*{from_suffix}"),
+                prefix: from_prefix.to_string(),
+                suffix: from_suffix.to_string(),
+            },
+            to: AliasTemplate {
+                raw: "test".to_string(),
+                parts,
+            },
+        }
+    }
+
+    #[test]
+    fn expands_alias_candidates_and_dedupes_collisions() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture,
+                    ],
+                ),
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture,
+                    ],
+                ),
+            ],
+        );
+
+        let expected = HashSet::from([input.to_string(), "be_admin".to_string()]);
+        assert_eq!(candidates, expected);
+    }
+
+    #[test]
+    fn expands_alias_candidates_with_distinct_outputs_and_drops_self_map() {
+        let input = "admin?";
+        let candidates = expand_alias_candidates(
+            input,
+            &[
+                alias_rule("", "?", vec![AliasTemplatePart::Capture]),
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("be_".to_string()),
+                        AliasTemplatePart::Capture,
+                    ],
+                ),
+                alias_rule(
+                    "",
+                    "?",
+                    vec![
+                        AliasTemplatePart::Literal("is_".to_string()),
+                        AliasTemplatePart::Capture,
+                    ],
+                ),
+            ],
+        );
+
+        let expected = HashSet::from([
+            input.to_string(),
+            "be_admin".to_string(),
+            "is_admin".to_string(),
+        ]);
+        assert_eq!(candidates, expected);
+    }
+
+    #[test]
+    fn render_alias_template_preserves_capture_characters() {
+        let rendered = render_alias_template(
+            "ready!",
+            &[
+                AliasTemplatePart::Literal("be_".to_string()),
+                AliasTemplatePart::Capture,
+            ],
+        );
+
+        assert_eq!(rendered, "be_ready!");
+    }
+
+    #[test]
+    fn render_alias_template_supports_snakecase_capture() {
+        let rendered =
+            render_alias_template("HTTPValidator", &[AliasTemplatePart::SnakecaseCapture]);
+
+        assert_eq!(rendered, "http_validator");
     }
 }
